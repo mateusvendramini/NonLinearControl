@@ -12,19 +12,18 @@ from numpy import pi
 
 mi = 0.1
 def ex3_ode(x, t, m=1., b=1, k=1):
-    if (x[0] == -1):
-        return 0,0
-    return (1-x[0])*x[1] - 2*x[0]*x[1]/(1+x[0]), x[1]*(1-x[1]/(1+x[0]))
+   return x[1] + mi*x[0], -x[0] + mi*x[1] - x[0]**2 * x[1]
 
 
 plt.close('all')
 # Generate a vector plot for the damped oscillator
 plt.figure()
 plt.clf()
-plt.axis([-1, 3, -1, 3])
+plt.axis([-2, 2, -2, 2])
 plt.title('mi=+0.1')
-x0 = np.linspace (0, 3, 20) 
-x1 = np.linspace (0, 3, 20)
+mi = 0.1
+x0 = np.linspace (-2, 2, 20) 
+x1 = np.linspace (-2, 2, 20)
 Xex0 = []
 for x in x0:
     for y in x1:
@@ -35,7 +34,70 @@ for x in x0:
 phase_plot(
     ex3_ode,
     X0=Xex0,
-    T=np.linspace(0, 10, 100),
+    T=np.linspace(0, 100, 1000),
+    logtime=(3, 0.7)
+)
+
+plt.figure()
+plt.clf()
+plt.axis([-2, 2, -2, 2])
+plt.title('mi=-0.1')
+mi = -0.1
+x0 = np.linspace (-2, 2, 10) 
+x1 = np.linspace (-2, 2, 10)
+Xex0 = []
+for x in x0:
+    for y in x1:
+        Xex0.append([x, y])
+
+#print (Xex0)
+# Outer trajectories
+phase_plot(
+    ex3_ode,
+    X0=Xex0,
+    T=np.linspace(0, 100, 1000),
+    logtime=(3, 0.7)
+)
+
+plt.figure()
+plt.clf()
+plt.axis([-2, 2, -2, 2])
+plt.title('mi=-0')
+mi = 0
+x0 = np.linspace (-1, 1, 10) 
+x1 = np.linspace (-1, 1, 10)
+Xex0 = []
+for x in x0:
+    for y in x1:
+        Xex0.append([x, y])
+
+#print (Xex0)
+# Outer trajectories
+phase_plot(
+    ex3_ode,
+    X0=Xex0,
+    T=np.linspace(0, 100, 1000),
+    logtime=(3, 0.7)
+)
+
+plt.figure()
+plt.clf()
+plt.axis([-2, 2, -2, 2])
+plt.title('mi=-0.01')
+mi = -0.01
+x0 = np.linspace (-1, 1, 10) 
+x1 = np.linspace (-1, 1, 10)
+Xex0 = []
+for x in x0:
+    for y in x1:
+        Xex0.append([x, y])
+
+#print (Xex0)
+# Outer trajectories
+phase_plot(
+    ex3_ode,
+    X0=Xex0,
+    T=np.linspace(0, 1000, 10000),
     logtime=(3, 0.7)
 )
 

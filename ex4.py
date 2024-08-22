@@ -21,10 +21,10 @@ plt.close('all')
 # Generate a vector plot for the damped oscillator
 plt.figure()
 plt.clf()
-plt.axis([-1, 3, -1, 3])
+plt.axis([0, 4, 0, 4])
 plt.title('mi=+0.1')
-x0 = np.linspace (0, 3, 20) 
-x1 = np.linspace (0, 3, 20)
+x0 = np.linspace (0, 4, 10) 
+x1 = np.linspace (0, 4, 10)
 Xex0 = []
 for x in x0:
     for y in x1:

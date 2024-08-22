@@ -70,7 +70,7 @@ plt.plot(t, v[:, 0], 'b', label='x1')
 
 plt.figure()
 plt.clf()
-plt.axis([0, 10, 0, 10])
+plt.axis([0, 10, -1, 10])
 plt.title('Resposta para condição inicial (10, 1) K=2000 C=400')
 K = 2000
 C = 400
