@@ -7,8 +7,11 @@ import control as ct
 from numpy import pi
 import scipy.integrate as spi
 
-def ref(t):
+def ref1(t):
     return (np.pi/24)*np.tanh(10*t)
+
+def ref2(t):
+    return (np.pi/12)*np.tanh(10*t)
 
 def sat(x):
     if x>=1:
@@ -16,7 +19,7 @@ def sat(x):
     elif x<= -1:
         return -1
     return x
-def s(x0, x1, t, lamb):
+def s(x0, x1, t, lamb, ref):
     return x1+lamb*(x0-ref(t))
 
 def u (x, t):
@@ -42,7 +45,7 @@ def u (x, t):
     q1d = x[2]
     q2d = x[3]
     lamb = 8
-    phi = 0.1
+    phi = 0.005
 
     
     q2dd_den = F2*q2d+a5*np.cos(q1+q2)+a3*np.sin(q2)*(q1d**2)
@@ -50,7 +53,7 @@ def u (x, t):
 
     H = np.array([[a1+2*a3*np.cos(q2), a2+a3*np.cos(q2)],
                   [a2+a3*np.cos(q2), a2]])
-    sden = np.array([[400*sat(s(q1, q1d, t, lamb)/phi)+lamb*q1d], [600*sat(s(q2, q2d, t, lamb)/phi)+lamb*q2d]])
+    sden = np.array([[62*sat(s(q1, q1d, t, lamb, ref1)/phi)+lamb*q1d], [254*sat(s(q2, q2d, t, lamb, ref2)/phi)+lamb*q2d]])
 
     slin = np.matmul(H, sden)
     #s = np.array([[s(q1, q1d, t, lamb)], [s(q2, q2d, t, lamb)]])
@@ -130,14 +133,14 @@ vsis.append([0, 0, 0, 0])
 # F1= 15
 # F2=15
 
-m1 = 2
-m2 = 1
-L1 = 1
-L2 = 0.5
-F1 = 10
-F2 = 10
-I1 = 0.1
-I2 = 0.05
+m1 = 9
+m2 = 5
+L1 = 2
+L2 = 1.5
+F1 = 20
+F2 = 20
+I1 = 0.4
+I2 = 0.2
 g = 9.8
 
 g = 9.8
@@ -155,7 +158,8 @@ arr_out = np.transpose(np.array (vsis))
 #plt.plotsubplot (t, ref(t), 'g', label='ref')
 plt.subplot(2, 2, 1)
 plt.suptitle('Simulação controlador de modos deslizantes ')
-plt.plot(t[:len(arr_out[0])-1], ref(t[:len(arr_out[0])-1]), 'g', label='ref')
+plt.plot(t[:len(arr_out[0])-1], ref1(t[:len(arr_out[0])-1]), 'g', label='refq1')
+plt.plot(t[:len(arr_out[0])-1], ref2(t[:len(arr_out[0])-1]), 'y', label='refq2')
 plt.plot(t[:len(arr_out[0])-1], arr_out[0][:-1], 'b', label='q1')
 plt.plot(t[:len(arr_out[0])-1], arr_out[1][:-1], 'r', label='q2')
 plt.grid()
@@ -168,16 +172,15 @@ plt.grid()
 plt.legend ()
 
 plt.subplot(2, 2, 3)
-s1 = s(arr_out[0][:-1], arr_out[2][:-1], t, 2)
+s1 = s(arr_out[0][:-1], arr_out[2][:-1], t, 8, ref1)
 plt.plot(t, s1, 'b', label='s1')
 plt.grid()
 plt.legend ()
 
 plt.subplot(2, 2, 4)
-s1 = s(arr_out[1][:-1], arr_out[3][:-1], t, 2)
+s1 = s(arr_out[1][:-1], arr_out[3][:-1], t, 8, ref2)
 plt.plot(t, s1, 'b', label='s2')
 plt.grid()
 plt.legend ()
-
 
 plt.show()
