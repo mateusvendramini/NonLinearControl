@@ -8,10 +8,10 @@ from numpy import pi
 import scipy.integrate as spi
 
 def ref1(t):
-    return (np.pi/24)*np.tanh(10*t)
+    return (np.pi/2)*np.tanh(10*t) + np.pi/2
 
 def ref2(t):
-    return (np.pi/12)*np.tanh(10*t)
+    return np.pi/2 - (np.pi/2) * np.tanh(10*t)
 
 def sat(x):
     if x>=1:
@@ -107,15 +107,13 @@ def sistema2(x, t, I1, I2, L1, L2, m1, m2, F1, F2, g):
     qdd = np.matmul(H_inv, np.array([[q1dd_den], [q2dd_den]]))
     return q1d, q2d, qdd[0][0], qdd[1][0]
 
-last_x = 0.00
-last_t = 0.00
 # print (str(u([0, 0], 0)))
 # print (str(u([0, 0], 0.1)))
 
 t = np.linspace (0, 3, 300000)
 #vsis = spi.odeint (sistema, [0, 0], t, tfirst=False)
 vsis = []
-vsis.append([0, 0, 0, 0])
+vsis.append([np.pi/2, np.pi/2, 0, 0])
 # m1 = 4
 # m2 = 1
 # L1 = 2
@@ -133,14 +131,24 @@ vsis.append([0, 0, 0, 0])
 # F1= 15
 # F2=15
 
-m1 = 9
-m2 = 5
-L1 = 2
-L2 = 1.5
-F1 = 20
-F2 = 20
-I1 = 0.4
-I2 = 0.2
+# m1 = 9
+# m2 = 5
+# L1 = 2
+# L2 = 1.5
+# F1 = 10
+# F2 = 10
+# I1 = 0.4
+# I2 = 0.2
+# g = 9.8
+
+m1 = 5
+m2 = 3
+L1 = 1.5
+L2 = 1
+I1 = 0.25
+I2 = 0.125
+F1= 15
+F2=15
 g = 9.8
 
 g = 9.8
@@ -157,7 +165,7 @@ arr_out = np.transpose(np.array (vsis))
 #plt.title ("Condição inicial [%d, %d] u constante  [%d]" %(vsis[0][0], vsis[0][1], u([0, 0], 0)))
 #plt.plotsubplot (t, ref(t), 'g', label='ref')
 plt.subplot(2, 2, 1)
-plt.suptitle('Simulação controlador de modos deslizantes ')
+plt.suptitle('Simulação controlador de modos deslizantes, grande erro parâmetros')
 plt.plot(t[:len(arr_out[0])-1], ref1(t[:len(arr_out[0])-1]), 'g', label='refq1')
 plt.plot(t[:len(arr_out[0])-1], ref2(t[:len(arr_out[0])-1]), 'y', label='refq2')
 plt.plot(t[:len(arr_out[0])-1], arr_out[0][:-1], 'b', label='q1')
@@ -179,7 +187,7 @@ plt.legend ()
 
 plt.subplot(2, 2, 4)
 s1 = s(arr_out[1][:-1], arr_out[3][:-1], t, 8, ref2)
-plt.plot(t, s1, 'b', label='s2')
+plt.plot(t, s1, 'r', label='s2')
 plt.grid()
 plt.legend ()
 
