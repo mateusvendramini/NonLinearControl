@@ -8,10 +8,10 @@ from numpy import pi
 import scipy.integrate as spi
 
 def ref1(t):
-    return np.pi/3-(np.pi/3)*np.tanh(10*t)#(np.pi/2)*np.tanh(10*t) + np.pi/2
+    return 1.127572188422499+(np.pi/2)*np.tanh(10*t)#(np.pi/2)*np.tanh(10*t) + np.pi/2
 
 def ref2(t):
-    return 0-(np.pi/2)*np.tanh(10*t) #np.pi/2 - (np.pi/2) * np.tanh(10*t)
+    return -0.02717109077810674-(np.pi/2)*np.tanh(10*t) #np.pi/2 - (np.pi/2) * np.tanh(10*t)
 
 def sat(x):
     if x>=1:
@@ -32,14 +32,14 @@ def u (x, t):
     # I2 = 0.125
     # F1= 15
     # F2=15
-    m1 = 2
-    m2 = 1
-    L1 = 1
-    L2 = 0.5
-    I1 = 0.1
-    I2 = 0.05
-    F1 = 10
-    F2 = 10
+    m1 = 1.9178533132322388
+    m2 = 0.9651596624103864
+    L1 = 1.0233902423594152
+    L2 = 0.4404871475561963
+    I1 = 0.1036096982291639
+    I2 = 0.05330792550109102
+    F1 = 15
+    F2 = 15
     g = 9.8
 
     a1 = I1 +(m1*L1*L1)/4 + m2*(L1**2 + (L2**2)/4)
@@ -122,7 +122,7 @@ def sistema2(x, t, I1, I2, L1, L2, m1, m2, F1, F2, g):
 t = np.linspace (0, 1, 500)
 #vsis = spi.odeint (sistema, [0, 0], t, tfirst=False)
 vsis = []
-vsis.append([np.pi/3, 0, 0, 0])
+vsis.append([1.127572188422499, -0.02717109077810674, 0, 0])
 # m1 = 4
 # m2 = 1
 # L1 = 2
@@ -150,12 +150,12 @@ vsis.append([np.pi/3, 0, 0, 0])
 # I2 = 0.2
 # g = 9.8
 
-m1 = 2
-m2 = 1
-L1 = 1
-L2 = 0.5
-I1 = 0.1
-I2 = 0.05
+m1 = 2.0975561637446507
+m2 = 0.986390211428680
+L1 = 0.9165574998344682
+L2 = 0.49447895383476115
+I1 = 0.10338316430814988
+I2 = 0.04012892953284832
 F1= 10
 F2=10
 

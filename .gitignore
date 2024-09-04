@@ -1,2 +1,6 @@
 *.out
 np_arrays/
+trabalho/np_arrays*/
+trabalho/logs*/
+trabalho/out1/
+trabalho/__pycache__/

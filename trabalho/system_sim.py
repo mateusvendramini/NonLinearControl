@@ -47,7 +47,7 @@ class Sistema:
         # internal output variables
         self._U = np.empty((0,2))  
         self._X = np.empty((0,4))
-        self.t = np.linspace (0, 1, 500)
+        self.t = np.linspace (0, 0.5, 64)
 
         #cada vetor de saída vai ter o formato [[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat], ]
 
@@ -172,7 +172,7 @@ def main():
     # sis = Sistema(m1=5, m1h=5, m2=3, m2h=3, L1=1.5, L1h=1.5, 
     #               L2=1, L2h=1, I1=0.25, I1h=0.25, I2=0.125, I2h=0.125, F1=15, F1h=15, F2=15 , F2h=15, ref1=np.pi/2, ref2=-np.pi/2,
     #                 q10=np.pi/2, q20=np.pi/2, K1=62, K2=254)
-    sis = Sistema(m1=2, m1h=2, m2=1, m2h=1, L1=1, L1h=1, L2=0.5, L2h=0.5, I1=0.1, I1h=0.1, I2=0.05, I2h=0.05, F1=10, F1h=10, F2=10, F2h=10, ref1=-np.pi/3, ref2=-np.pi/2, q10=np.pi/3, q20=0.00, K1=74, K2=266)
+    sis = Sistema(m1=2.0975561637446507, m1h=1.9178533132322388, m2=0.9863902114286804, m2h=0.9651596624103864, L1=0.9165574998344682, L1h=1.0233902423594152, L2=0.49447895383476115, L2h=0.4404871475561963, I1=0.1033831643081498, I1h=0.1036096982291639, I2=0.04012892953284832, I2h=0.05330792550109102, F1=10, F1h=10, F2=10, F2h=10, ref1=np.pi/3, ref2=-np.pi/2, q10=1.127572188422499, q20=-0.02717109077810674, K1=74, K2=266)
     sis.run()
     out, y = sis.getTrainingArray()
     xsis = []
