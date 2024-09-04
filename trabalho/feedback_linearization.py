@@ -8,10 +8,10 @@ from numpy import pi
 import scipy.integrate as spi
 
 def ref1(t):
-    return (np.pi/2)*np.tanh(10*t) + np.pi/2
+    return np.pi/3-(np.pi/3)*np.tanh(10*t)#(np.pi/2)*np.tanh(10*t) + np.pi/2
 
 def ref2(t):
-    return np.pi/2 - (np.pi/2) * np.tanh(10*t)
+    return 0-(np.pi/2)*np.tanh(10*t) #np.pi/2 - (np.pi/2) * np.tanh(10*t)
 
 def sat(x):
     if x>=1:
@@ -24,14 +24,22 @@ def s(x0, x1, t, lamb, ref):
 
 def u (x, t):
     #return 0,0
-    m1 = 5
-    m2 = 3
-    L1 = 1.5
-    L2 = 1
-    I1 = 0.25
-    I2 = 0.125
-    F1= 15
-    F2=15
+    # m1 = 5
+    # m2 = 3
+    # L1 = 1.5
+    # L2 = 1
+    # I1 = 0.25
+    # I2 = 0.125
+    # F1= 15
+    # F2=15
+    m1 = 2
+    m2 = 1
+    L1 = 1
+    L2 = 0.5
+    I1 = 0.1
+    I2 = 0.05
+    F1 = 10
+    F2 = 10
     g = 9.8
 
     a1 = I1 +(m1*L1*L1)/4 + m2*(L1**2 + (L2**2)/4)
@@ -45,7 +53,8 @@ def u (x, t):
     q1d = x[2]
     q2d = x[3]
     lamb = 8
-    phi = 0.005
+    #phi = 0.005
+    phi = 0.01
 
     
     q2dd_den = F2*q2d+a5*np.cos(q1+q2)+a3*np.sin(q2)*(q1d**2)
@@ -53,7 +62,7 @@ def u (x, t):
 
     H = np.array([[a1+2*a3*np.cos(q2), a2+a3*np.cos(q2)],
                   [a2+a3*np.cos(q2), a2]])
-    sden = np.array([[62*sat(s(q1, q1d, t, lamb, ref1)/phi)+lamb*q1d], [254*sat(s(q2, q2d, t, lamb, ref2)/phi)+lamb*q2d]])
+    sden = np.array([[74*sat(s(q1, q1d, t, lamb, ref1)/phi)+lamb*q1d], [266*sat(s(q2, q2d, t, lamb, ref2)/phi)+lamb*q2d]])
 
     slin = np.matmul(H, sden)
     #s = np.array([[s(q1, q1d, t, lamb)], [s(q2, q2d, t, lamb)]])
@@ -110,10 +119,10 @@ def sistema2(x, t, I1, I2, L1, L2, m1, m2, F1, F2, g):
 # print (str(u([0, 0], 0)))
 # print (str(u([0, 0], 0.1)))
 
-t = np.linspace (0, 3, 300000)
+t = np.linspace (0, 1, 500)
 #vsis = spi.odeint (sistema, [0, 0], t, tfirst=False)
 vsis = []
-vsis.append([np.pi/2, np.pi/2, 0, 0])
+vsis.append([np.pi/3, 0, 0, 0])
 # m1 = 4
 # m2 = 1
 # L1 = 2
@@ -141,15 +150,14 @@ vsis.append([np.pi/2, np.pi/2, 0, 0])
 # I2 = 0.2
 # g = 9.8
 
-m1 = 5
-m2 = 3
-L1 = 1.5
-L2 = 1
-I1 = 0.25
-I2 = 0.125
-F1= 15
-F2=15
-g = 9.8
+m1 = 2
+m2 = 1
+L1 = 1
+L2 = 0.5
+I1 = 0.1
+I2 = 0.05
+F1= 10
+F2=10
 
 g = 9.8
 for i in range (len(t)):

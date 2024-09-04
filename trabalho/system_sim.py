@@ -47,7 +47,7 @@ class Sistema:
         # internal output variables
         self._U = np.empty((0,2))  
         self._X = np.empty((0,4))
-        self.t = np.linspace (0, 1, 20000)
+        self.t = np.linspace (0, 1, 500)
 
         #cada vetor de saída vai ter o formato [[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat], ]
 
@@ -139,6 +139,9 @@ class Sistema:
 
     def getTrainingArray(self):
         out = np.empty((0,16))
+        Y = np.empty((0, 8))
+        y = np.array([[self.m1, self.m2, self.L1, self.L2, self.I1, self.I2, self.F1, self.F2]])
+
         # Cada elemento de saída vai ter o formato [[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat], ]
         for i in range(len(self._X)-1):
             out = np.concatenate((out, np.array([[
@@ -147,7 +150,10 @@ class Sistema:
                 self._X[i+1][2], self._X[i+1][3],
                 self.m1h, self.m2h, self.L1h, self.L2h, self.I1h, self.I2h, self.F1h, self.F2h
             ]])))
-        return out
+            
+            Y = np.concatenate((Y, y))
+        
+        return out, Y
 
 def main():
 #    m1 = 5
@@ -161,11 +167,14 @@ def main():
 
 #pyt
     # Inicia sistema
-    sis = Sistema(m1=5, m1h=5, m2=3, m2h=3, L1=1.5, L1h=1.5, 
-                  L2=1, L2h=1, I1=0.25, I1h=0.25, I2=0.125, I2h=0.125, F1=15, F1h=15, F2=15 , F2h=15, ref1=np.pi/2, ref2=-np.pi/2,
-                    q10=np.pi/2, q20=np.pi/2, K1=62, K2=254)
+    #2.0, 2.0, 1.0, 1.0,L1 1.0, L1 1.0, L2 0.5, L2 0.5, I1 0.1, I1 0.1, i2 0.05, i2 0.05, F1 10.0, F1 10.0, F2 10.0, F2 10.0, -1.0471975511965976, -1.5707963267948966, 0.0, 0.0, 74.0, 266
+
+    # sis = Sistema(m1=5, m1h=5, m2=3, m2h=3, L1=1.5, L1h=1.5, 
+    #               L2=1, L2h=1, I1=0.25, I1h=0.25, I2=0.125, I2h=0.125, F1=15, F1h=15, F2=15 , F2h=15, ref1=np.pi/2, ref2=-np.pi/2,
+    #                 q10=np.pi/2, q20=np.pi/2, K1=62, K2=254)
+    sis = Sistema(m1=2, m1h=2, m2=1, m2h=1, L1=1, L1h=1, L2=0.5, L2h=0.5, I1=0.1, I1h=0.1, I2=0.05, I2h=0.05, F1=10, F1h=10, F2=10, F2h=10, ref1=-np.pi/3, ref2=-np.pi/2, q10=np.pi/3, q20=0.00, K1=74, K2=266)
     sis.run()
-    out = sis.getTrainingArray()
+    out, y = sis.getTrainingArray()
     xsis = []
     ysis = []
     v1sis = []
