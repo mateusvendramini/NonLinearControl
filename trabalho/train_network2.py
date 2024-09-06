@@ -5,6 +5,29 @@ import torch_directml
 import numpy as np
 import os
 
+class EarlyStopper:
+    def __init__(self, patience=1, min_delta=0, low_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.low_dloss_counter = 0
+        self.low_delta = low_delta
+        self.min_validation_loss = float('inf')
+
+    def early_stop(self, validation_loss):
+        if validation_loss < self.min_validation_loss:
+            if (self.min_validation_loss - validation_loss < self.low_delta):
+                self.low_dloss_counter+=1
+                if self.low_dloss_counter >= self.patience:
+                    return True
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > (self.min_validation_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
+    
 
 class Net(nn.Module):
     def __init__(self):
@@ -190,42 +213,83 @@ def main():
         X = np.concatenate((X, x))
         y = np.load(y_path, 'r')
         Y = np.concatenate((Y, y))
-        break
+        
 
-    print('X', len(X))
-    print('Y', len(Y))
-    X = X[~np.isnan(X).any(axis=1)]
-    Y = Y[~np.isnan(Y).any(axis=1)]
+    #print('X', len(X))
+    #print('Y', len(Y))
+    x_nan_index = np.isnan(X).any(axis=1)
+    X = X[~x_nan_index]
+    Y = Y[~x_nan_index]
+
+    y_nan_index = np.isnan(Y).any(axis=1)
+    X = X[~y_nan_index]
+    Y = Y[~y_nan_index]
+
+    dataset_size = len(X)
+    validation_split = 0.2
+    indices = list(range(dataset_size))
+    split = int(np.floor(validation_split * dataset_size))
+    np.random.shuffle(indices)
+    train_indices = indices[split:]
+    test_indices = indices[:split]
+    X_test = X[test_indices]
+    Y_test = Y[test_indices]
+    X_train = X[train_indices]
+    Y_train = Y[train_indices]
+    #a_train = a[train_indices]
+    train_validation = []
+    test_validation = []
     #X= X[0:3]
     #Y = Y[0:3]
     net = Net()
     net = net.to(device)
     mse_cost_function = torch.nn.MSELoss() # Mean squared error
     optimizer = torch.optim.Adam(net.parameters())
-
+    
     ### (3) Training / Fitting
-    iterations = 1000
-    previous_validation_loss = 99999999.0
+    iterations = 13000
+    pt_x_bc = Variable(torch.from_numpy(X_train).float(), requires_grad=False).to(device)
+    pt_y_bc = Variable(torch.from_numpy(Y_train).float(), requires_grad=False).to(device)
+
+    pt_x_validation = Variable(torch.from_numpy(X_test).float(), requires_grad=False).to(device)
+    pt_y_validation = Variable(torch.from_numpy(Y_test).float(), requires_grad=False).to(device)
+    early_stop = EarlyStopper(5, 0.1, 0.00001)
+    #previous_validation_loss = 99999999.0
     for epoch in range(iterations):
         optimizer.zero_grad() # to make the gradients zero
-        pt_x_bc = Variable(torch.from_numpy(X).float(), requires_grad=False).to(device)
-        pt_y_bc = Variable(torch.from_numpy(Y).float(), requires_grad=False).to(device)
         net_bc_out = net(pt_x_bc)
         mse_u = mse_cost_function(net_bc_out, pt_y_bc)
         e, dv = model_loss(pt_x_bc, net, device)
         mse_f = mse_cost_function(e, dv)
         loss = mse_u + mse_f
 
+        #@torch.no_grad
+        net_bc_out = net(pt_x_validation)
+        mse_u = mse_cost_function(net_bc_out, pt_y_validation)
+        e, dv = model_loss(pt_x_validation, net, device)
+        mse_f = mse_cost_function(e, dv)
+        valitation_loss = mse_u + mse_f
+
         loss.backward() # This is for computing gradients using backward propagation
         optimizer.step() # This is equivalent to : theta_new = theta_old - alpha * derivative of J w.r.t theta
 
+        train_validation.append(loss.cpu().data.numpy())
+        test_validation.append(valitation_loss.cpu().data.numpy())
+
+        if (early_stop.early_stop(valitation_loss.cpu().data.numpy())):
+            print("training halt")
+            break
+        
         with torch.autograd.no_grad():
-    	    print(epoch,"Traning Loss:",loss.data)
+    	    print(epoch,"Traning Loss:",loss.data,",Validation Loss:", valitation_loss.data)
+            
+
+    np.save(os.path.join('.', 'out', 'train_deep.loss'), np.array(train_validation))
+    np.save(os.path.join('.', 'out', 'test_deep.loss'), np.array(test_validation))
 
 
-    print()
     print('saving model')
-    torch.save(net.state_dict(), "model_uxt2.pt")
+    torch.save(net.state_dict(), os.path.join('.', 'out', 'model_uxt_deepNeurons.pt'))
 
 if __name__ == '__main__':
     main()
