@@ -40,7 +40,7 @@ def process(inputs, i):
     j_max=len(inputs)
     j_notify = j_max//10
     log_fn = '{0}.log'.format(i)
-    log = os.path.join('.', 'logs', log_fn)
+    log = os.path.join('.', 'logs2', log_fn)
     log_file = os.open(log, os.O_RDWR | os.O_CREAT)
     if (i==0):
         printProgressBar(j, j_max)
@@ -48,6 +48,8 @@ def process(inputs, i):
     for input in inputs:
         with warnings.catch_warnings():
             warnings.filterwarnings('error')
+            err1 = input[0] + map_random(-0.1, 0.1, rng.random())
+            err2 = input[1] + map_random(-0.1, 0.1, rng.random())
             sys = Sistema(5 + map_random(-3, 3, rng.random()), 5 + map_random(-3, 3, rng.random()), #m1
                           3 + map_random(-2, 2, rng.random()), 3 + map_random(-2, 2, rng.random()), #m2
                             1.5 + map_random(-0.5, 0.5, rng.random()), 1.5 + map_random(-0.5, 0.5, rng.random()), # L1
@@ -56,9 +58,10 @@ def process(inputs, i):
                               0.15 + map_random(-0.075, 0.075, rng.random()), 0.15 + map_random(-0.075, 0.075, rng.random()), #I2
                 15 + map_random(-5, 5, rng.random()), 15 + map_random(-5, 5, rng.random()), #F1
                 15 + map_random(-5, 5, rng.random()), 15 + map_random(-5, 5, rng.random()), #F2
-                input[0] + map_random(-0.1, 0.1, rng.random()), input[1] + map_random(-0.1, 0.1, rng.random()),  #ref1, ref2
-                input[2] + map_random(-0.1, 0.1, rng.random()), input[3] + map_random(-0.1, 0.1, rng.random()), #q10, q20
-                74, 266) #K1, K2
+                err1, err2, #ref1, ref2
+                input[0] + map_random(-0.1, 0.1, rng.random()), input[1] + map_random(-0.1, 0.1, rng.random()), #q10, q20
+                74, 266, #K1, K2
+                map_random(0, err1*2, rng.random()), map_random(0, err2*2, rng.random())) 
             try:
                 sys.run()
                 x, y = sys.getTrainingArray()
@@ -79,8 +82,8 @@ def process(inputs, i):
 
     x_file_name='x_{0}.out'.format(i)
     y_file_name='y_{0}.out'.format(i)
-    np.save(os.path.join('.', 'np_arrays', x_file_name), X)
-    np.save(os.path.join('.', 'np_arrays', y_file_name), Y)
+    np.save(os.path.join('.', 'np_arrays2', x_file_name), X)
+    np.save(os.path.join('.', 'np_arrays2', y_file_name), Y)
     os.close(log_file)
 
 def main():
@@ -102,10 +105,10 @@ def main():
     #F1h = np.linspace(15, 15, param_len)
     #F2 = np.linspace(15, 15, param_len) #14 5
     #F2h = np.linspace(15, 15, param_len)
-    q10 = np.linspace(np.pi/3, 5*np.pi/3, 32)
-    q20 = np.linspace(0, 2*np.pi, 32)
-    q1jump = np.linspace(-np.pi/3, np.pi/3, 16)
-    q2jump = np.linspace(-np.pi/2, np.pi/2, 16)
+    q10 = np.linspace(np.pi/3, 5*np.pi/3, 16)
+    q20 = np.linspace(0, 2*np.pi, 16)
+    q1jump = np.linspace(-np.pi/3, np.pi/3, 8)
+    q2jump = np.linspace(-np.pi/2, np.pi/2, 8)
     #K1 = np.linspace(74.00, 74.00, 1)
     #K2 = (266.00, 266.00, 1)
     # m1, m1h, m2, m2h, L1, L1h, L2, L2h, I1, I1h, I2, I2h, F1, F1h, F2, F2h, ref1, ref2, q10, q20, K1, K2):

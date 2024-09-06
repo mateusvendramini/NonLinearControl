@@ -54,7 +54,7 @@ def u (x, t):
     q2d = x[3]
     lamb = 8
     #phi = 0.005
-    phi = 0.01
+    phi = 0.005
 
     
     q2dd_den = F2*q2d+a5*np.cos(q1+q2)+a3*np.sin(q2)*(q1d**2)
@@ -119,7 +119,7 @@ def sistema2(x, t, I1, I2, L1, L2, m1, m2, F1, F2, g):
 # print (str(u([0, 0], 0)))
 # print (str(u([0, 0], 0.1)))
 
-t = np.linspace (0, 1, 500)
+t = np.linspace (0, 1, 32768)
 #vsis = spi.odeint (sistema, [0, 0], t, tfirst=False)
 vsis = []
 vsis.append([1.127572188422499, -0.02717109077810674, 0, 0])

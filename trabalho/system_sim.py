@@ -18,7 +18,7 @@ def s(x0, x1, t, lamb, ref):
         return x1+lamb*(x0-ref(t))
 
 class Sistema:
-    def __init__(self, m1, m1h, m2, m2h, L1, L1h, L2, L2h, I1, I1h, I2, I2h, F1, F1h, F2, F2h, ref1, ref2, q10, q20, K1, K2):
+    def __init__(self, m1, m1h, m2, m2h, L1, L1h, L2, L2h, I1, I1h, I2, I2h, F1, F1h, F2, F2h, ref1, ref2, q10, q20, K1, K2,q30, q40):
         '''
         m1, m1h, m2, m2h, L1, L1h, L2, L2h, I1, I1h, I2, I2h, F1, F1h, F2, F2h, ref1, ref2, q10, q20, K1, K2
         '''
@@ -42,12 +42,14 @@ class Sistema:
         self.ref2 = ref2
         self.q10 = q10
         self.q20 = q20
+        self.q30 = q30
+        self.q40 = q40
         self.K1 = K1
         self.K2 = K2
         # internal output variables
         self._U = np.empty((0,2))  
         self._X = np.empty((0,4))
-        self.t = np.linspace (0, 0.5, 64)
+        self.t = np.linspace (0, 1/512., 64)
 
         #cada vetor de saída vai ter o formato [[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat], ]
 
@@ -126,7 +128,7 @@ class Sistema:
 
     def run(self):
         
-        self._X = np.concatenate((self._X , np.array([[self.q10, self.q20, 0, 0]])))
+        self._X = np.concatenate((self._X , np.array([[self.q10, self.q20, self.q30, self.q40]])))
 
         g = 9.8
         dt = self.t[1] - self.t[0]
