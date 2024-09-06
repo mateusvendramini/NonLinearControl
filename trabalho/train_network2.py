@@ -32,75 +32,132 @@ def set_seed(seed):
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
-def H(m1, m2, L1, L2, I1, I2, F1, F2, q1, q2, q3, q4):
+
+
+def H_(m1, m2, L1, L2, I1, I2, F1, F2, q1, q2, q3, q4):
     g = 9.8
-    a1 = I1 +(m1*L1*L1)/4 + m2*(L1**2 + (L2**2)/4)
+    a1 = I1 +(m1*L1*L1)/4 + m2*(L1*L1 + (L2*L2)/4)
     a2 = I2 +(m2*L2**2)/4
     a3 = m2*L1*L2/2
     
-    H = np.array([[a1+2*a3*np.cos(q2), a2+a3*np.cos(q2)],
-                    [a2+a3*np.cos(q2), a2]])
+    #H = np.array([[a1+2*a3*np.cos(q2), a2+a3*np.cos(q2)],
+    #                [a2+a3*np.cos(q2), a2]])
+    H = a1+2*a3*torch.cos(q2), a2+a3*torch.cos(q2), a2+a3*torch.cos(q2), a2 #return H11, H12, H21, H22
     return H
 
-def f(m1, m2, L1, L2, I1, I2, F1, F2, q1, q2, q3, q4):
+# def H(u, x):
+#     #return H(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8])
+#     return H_(torch.index_select(u, 1, 0), torch.index_select(u, 1, 1), 
+#              torch.index_select(u, 1, 2), torch.index_select(u, 1, 3),
+#              torch.index_select(u, 1, 4), torch.index_select(u, 1, 5), 
+#              torch.index_select(u, 1, 6), torch.index_select(u, 1, 7),
+#              torch.index_select(x, 1, 0), torch.index_select(x, 1, 1), torch.index_select(x, 1, 2), torch.index_select(x, 1, 3)
+#              )
+
+def f_(m1, m2, L1, L2, I1, I2, F1, F2, q1, q2, q3, q4):
     g = 9.8
     a3 = m2*L1*L2/2
     a4 = g*(m1*L1/2 + m2*L1)
     a5 = m2*g*L2/2
     
-    q2dd_den = F2*q4+a5*np.cos(q1+q2)+a3*np.sin(q2)*(q3**2)
-    q1dd_den = F1*q3+a4*np.cos(q1)+a5*np.cos(q1+q2)+2*a3*np.sin(q2)*q3*q4+a3*np.sin(q2)*(q4*q4)
+    q2dd_den = F2*q4+a5*torch.cos(q1+q2)+a3*torch.sin(q2)*(q3*q3)
+    q1dd_den = F1*q3+a4*torch.cos(q1)+a5*torch.cos(q1+q2)+2*a3*torch.sin(q2)*q3*q4+a3*torch.sin(q2)*(q4*q4)
 
     
-    return np.array([[-q1dd_den], [-q2dd_den]])
+    return (-q1dd_den, -q2dd_den)
 
+# def f(u, x):
+#     return f_(torch.index_select(u, 1, 0), torch.index_select(u, 1, 1), 
+#              torch.index_select(u, 1, 2), torch.index_select(u, 1, 3),
+#              torch.index_select(u, 1, 4), torch.index_select(u, 1, 5), 
+#              torch.index_select(u, 1, 6), torch.index_select(u, 1, 7),
+#              torch.index_select(x, 1, 0), torch.index_select(x, 1, 1), torch.index_select(x, 1, 2), torch.index_select(x, 1, 3))
 
-
-def model_loss_(x, u_hat):
+def model_loss_(x, u_hat, device):
     #formato de x
     #[[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat]
     
 
     #u_hat = net(x) # m1 m2 L1 L2 I1 I2 F1 F2 estimados
     #u_hat = u_hat.detach().numpy() 
-    u_hat = u_hat.numpy() 
-    x = x.numpy()
-    q1 = x[0]
-    q2 = x[1]
-    q3 = x[2]
-    q4 = x[3]
+    #u_hat = u_hat.numpy() 
+    #x = x.numpy()
+    x = x.cpu()
+    u_hat = u_hat.cpu()
+
+    q1 = torch.index_select(x, 1, torch.tensor([0])).to(device)
+    q2 = torch.index_select(x, 1, torch.tensor([1])).to(device)
+    q3 = torch.index_select(x, 1, torch.tensor([2])).to(device)
+    q4 = torch.index_select(x, 1, torch.tensor([3])).to(device)
+    T1 = torch.index_select(x, 1, torch.tensor([4])).to(device)
+    T2 = torch.index_select(x, 1, torch.tensor([5])).to(device)
+    v1 = torch.index_select(x, 1, torch.tensor([6])).to(device)
+    v2 = torch.index_select(x, 1, torch.tensor([7])).to(device)
+
+    m1x = torch.index_select(x, 1, torch.tensor([8])).to(device)
+    m2x = torch.index_select(x, 1, torch.tensor([9])).to(device)
+    L1x = torch.index_select(x, 1, torch.tensor([10])).to(device)
+    L2x = torch.index_select(x, 1, torch.tensor([11])).to(device)
+    I1x = torch.index_select(x, 1, torch.tensor([12])).to(device)
+    I2x = torch.index_select(x, 1, torch.tensor([13])).to(device)
+    F1x = torch.index_select(x, 1, torch.tensor([14])).to(device)
+    F2x = torch.index_select(x, 1, torch.tensor([15])).to(device)
+    
+    m1u = torch.index_select(u_hat, 1, torch.tensor([0])).to(device)
+    m2u = torch.index_select(u_hat, 1, torch.tensor([1])).to(device)
+    L1u = torch.index_select(u_hat, 1, torch.tensor([2])).to(device)
+    L2u = torch.index_select(u_hat, 1, torch.tensor([3])).to(device)
+    I1u = torch.index_select(u_hat, 1, torch.tensor([4])).to(device)
+    I2u = torch.index_select(u_hat, 1, torch.tensor([5])).to(device)
+    F1u = torch.index_select(u_hat, 1, torch.tensor([6])).to(device)
+    F2u = torch.index_select(u_hat, 1, torch.tensor([7])).to(device)
+
+    
+    # u_from_x = torch.tensor([
+    #     torch.index_select(x, 1, torch.tensor([8])), torch.index_select(x, 1, torch.tensor([9])),
+    #     torch.index_select(x, 1, torch.tensor([10])), torch.index_select(x, 1, torch.tensor([11])),
+    #     torch.index_select(x, 1, torch.tensor([12])), torch.index_select(x, 1, torch.tensor([13])),
+    #     torch.index_select(x, 1, torch.tensor([14])), torch.index_select(x, 1, torch.tensor([15]))
+    # ])
+    #q1 = x[0]
+    #q2 = x[1]
+    #q3 = x[2]
+    #q4 = x[3]
     dt = 0.000030517578125
-    Hi =      H(x[8],     x[9],     x[10],    x[11],    x[12],    x[13],    x[14],    x[15],    q1, q2, q3, q4)
-    Hi_next = H(u_hat[0], u_hat[1], u_hat[2], u_hat[3], u_hat[4], u_hat[5], u_hat[6], u_hat[7], q1, q2, q3, q4) #q1, q2, q3, q4
-    fi_next = f(u_hat[0], u_hat[1], u_hat[2], u_hat[3], u_hat[4], u_hat[5], u_hat[6], u_hat[7], q1, q2, q3, q4) # formato 
-    fi =      f(x[8],     x[9],     x[10],    x[11],    x[12],    x[13],    x[14],    x[15],    q1, q2, q3, q4)
-    Hi_next_inv = np.linalg.inv(Hi_next)
-    e = np.matmul(Hi_next_inv,fi_next - fi) - np.matmul(np.matmul(Hi_next_inv, Hi), np.array([[x[4]], [x[5]]])) 
-    e = dt*e
-    e = np.transpose(e)
-    dv = np.array([[x[6]-q3, x[7]-q4]])
+    Hi11, Hi12, Hi21, Hi22 = H_(m1u, m2u, L1u, L2u, I1u, I2u, F1u, F2u, q1, q2, q3, q4)
+    Hi_next11, Hi_next12, Hi_next21, Hi_next22 = H_(m1x, m2x, L1x, L2x, I1x, I2x, F1x, F2x, q1, q2, q3, q4)#.to(device) #q1, q2, q3, q4
+    fi_next1, fi_next2 = f_(m1x, m2x, L1x, L2x, I1x, I2x, F1x, F2x, q1, q2, q3, q4) # formato 
+    fi1, fi2  =      f_(m1u, m2u, L1u, L2u, I1u, I2u, F1u, F2u, q1, q2, q3, q4)#.to(device)
+
+    #Hi = Hi.to(device)
+    den = 1/(Hi_next11*Hi_next22 - Hi_next12*Hi_next21)
+    Hi_next_inv11 = den * Hi_next22
+    Hi_next_inv12 = -den * Hi_next12
+    Hi_next_inv21 =-den * Hi_next21
+    Hi_next_inv22 = den * Hi_next11
+
+    #e = torch.matmul(Hi_next_inv,fi_next - fi) - torch.matmul(torch.matmul(Hi_next_inv, Hi), torch.tensor([[torch.index_select(x, 1, 4)], [torch.index_select(x, 1, 5)]])) 
+    HH11 = Hi_next_inv11*Hi11 + Hi_next_inv12*Hi21
+    HH12 = Hi_next_inv11*Hi12 + Hi_next_inv12*Hi22
+    HH21 = Hi_next_inv21*Hi11 + Hi_next_inv22*Hi21
+    HH22 =  Hi_next_inv21*Hi12 + Hi_next_inv22*Hi22
+
+    e1 = (Hi_next_inv11*(fi1-fi_next1) + Hi_next_inv12*(fi2-fi_next2) - (HH11*T1 + HH12*T2))*dt
+    e2 = (Hi_next_inv21*(fi1-fi_next1) + Hi_next_inv22*(fi2-fi_next2) - (HH21*T1 + HH22*T2))*dt
+    dv1 = v1 - q3
+    dv2 = v2 - q4
+    #e = dt*e
+    #e = torch.transpose(e)
+    #dv = torch.tensor([[torch.index_select(x, 1, torch.tensor([6]))-torch.index_select(x, 1, torch.tensor([2])), torch.index_select(x, 1, torch.tensor([7]))-torch.index_select(x, 1, torch.tensor([3]))]])
     #np.matmul()
-    return dv, e
+    return torch.cat((e1, e2), 1), torch.cat((dv1, dv2), 1)
 
 def model_loss(x, net, device):
-    dvs = []
-    es = []
+
     i = 0
     u =net(x)
-    u = u.detach()
-    x = x.detach()
-    for i in range(len(x)):
-        dv, e = model_loss_(x[i], u[i])
-        dvs.append(dv)
-        es.append(e)
-        i+=1
-        # if (i%10 == 0):
-        #     print('step {0}'.format(i))
-        #out = np.concatenate(out, np.array([[dv, e]]))
-    es_ = np.array(es)
-    dvs_ = np.array(dvs)
-    return Variable(torch.from_numpy(dvs_).float(), requires_grad=False).to(device), Variable(torch.from_numpy(es_).float(), requires_grad=False).to(device)
-
+    
+    return model_loss_(x, u, device)
 # def my_mse(a, b):
 #     a = a.detach().numpy()
 #     b = b.detach().numpy()
@@ -139,13 +196,15 @@ def main():
     print('Y', len(Y))
     X = X[~np.isnan(X).any(axis=1)]
     Y = Y[~np.isnan(Y).any(axis=1)]
+    #X= X[0:3]
+    #Y = Y[0:3]
     net = Net()
     net = net.to(device)
     mse_cost_function = torch.nn.MSELoss() # Mean squared error
     optimizer = torch.optim.Adam(net.parameters())
 
     ### (3) Training / Fitting
-    iterations = 100000
+    iterations = 1000
     previous_validation_loss = 99999999.0
     for epoch in range(iterations):
         optimizer.zero_grad() # to make the gradients zero
@@ -153,9 +212,9 @@ def main():
         pt_y_bc = Variable(torch.from_numpy(Y).float(), requires_grad=False).to(device)
         net_bc_out = net(pt_x_bc)
         mse_u = mse_cost_function(net_bc_out, pt_y_bc)
-        #e, dv = model_loss(pt_x_bc, net, device)
-        #mse_f = mse_cost_function(e, dv)
-        loss = mse_u #+ mse_f
+        e, dv = model_loss(pt_x_bc, net, device)
+        mse_f = mse_cost_function(e, dv)
+        loss = mse_u + mse_f
 
         loss.backward() # This is for computing gradients using backward propagation
         optimizer.step() # This is equivalent to : theta_new = theta_old - alpha * derivative of J w.r.t theta
@@ -166,7 +225,7 @@ def main():
 
     print()
     print('saving model')
-    torch.save(net.state_dict(), "model_uxt.pt")
+    torch.save(net.state_dict(), "model_uxt2.pt")
 
 if __name__ == '__main__':
     main()
