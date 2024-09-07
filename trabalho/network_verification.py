@@ -1,4 +1,4 @@
-#import os
+import os
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,6 +8,8 @@ import train_network2
 #import control as ct
 from numpy import pi
 #import scipy.integrate as spi
+from generate_training import array_folder
+
 
 def sat(x):
     if x>=1:
@@ -103,17 +105,17 @@ class Sistema:
         x = torch.tensor([[self._X[i-1][0], self._X[i-1][1], self._X[i-1][2], self._X[i-1][3],
                 self._U[i-1][0], self._U[i-1][1],
                 self._X[i][2], self._X[i][3],
-                self.m1h, self.m2h, self.L1h, self.L2h, self.I1h, self.I2h, self.F1h, self.F2h]])
+                (self.m1h-2)/6, (self.m2h-1)/4, self.L1h-1, self.L2h-1, (self.I1h-0.1)/0.3, (self.I2h-0.05)/0.15, (self.F1h-10)/10, (self.F2h-10)/10]]) #has to be normlz
         x = x.to(torch.float32)
         m_new = self.net(x).numpy()
-        dm1 = (m_new[0][0] - self.m1h)
-        dm2 = (m_new[0][1] - self.m2h)
-        dL1 = (m_new[0][2] - self.L1h)
-        dL2 = (m_new[0][3] - self.L2h)
-        dI1 = (m_new[0][4] - self.I1h)
-        dI2 = (m_new[0][5] - self.I2h)
-        dF1 = (m_new[0][6] - self.F1h)
-        dF2 = (m_new[0][7] - self.F2h)
+        dm1 = ((m_new[0][0])*6+2 - self.m1h)
+        dm2 = ((m_new[0][1])*4+1 - self.m2h)
+        dL1 = ((m_new[0][2]+1) - self.L1h)
+        dL2 = (m_new[0][3]+0.5 - self.L2h)
+        dI1 = ((m_new[0][4])*0.3 +0.1 - self.I1h)
+        dI2 = ((m_new[0][5])*0.125+0.05 - self.I2h)
+        dF1 = ((m_new[0][6])*10+10 - self.F1h)
+        dF2 = ((m_new[0][7])*10+10 - self.F2h)
         self.m1h = self.m1h + 0.01*dm1
         self.m2h = self.m2h + 0.01*dm2
         self.L1h = self.L1h + 0.01*dL1
@@ -127,7 +129,7 @@ class Sistema:
                               (self.L1h-self.L1)**2 + (self.L2h-self.L2)**2+
                               (self.I1h-self.I1)**2 + (self.I2h-self.I2)**2 + 
                               (self.F1h-self.F1)**2 + (self.F2h-self.F2)**2)
-        if np.sqrt((dm1**2 + dm2**2 + dL1**2 + dL2**2 + dI1**2 + dI2**2 + dF1**2 + dF2**2)/8) < 0.001:
+        if np.sqrt((dm1**2 + dm2**2 + dL1**2 + dL2**2 + dI1**2 + dI2**2 + dF1**2 + dF2**2)/8) < 0.00001:
             self.learning_parameters = 0
             print('finished learning parameters')
         return
@@ -171,7 +173,7 @@ class Sistema:
         slin = np.matmul(H, sden)
         #s = np.array([[s(q1, q1d, t, lamb)], [s(q2, q2d, t, lamb)]])
 
-        U = q1dd_den-slin[0][0], q2dd_den-slin[1][0]-lamb*q2d
+        U = q1dd_den-slin[0][0]-lamb*q1d, q2dd_den-slin[1][0]-lamb*q2d
         self._U = np.concatenate((self._U, np.array([[U[0], U[1]]])))
         return U[0], U[1]
         #return 0.8*p1-50*(x[0]-ref(t)), 0.8*p2-50*(x[1]-ref(t)) 
@@ -252,9 +254,9 @@ def main():
     # sis = Sistema(m1=5, m1h=5, m2=3, m2h=3, L1=1.5, L1h=1.5, 
     #               L2=1, L2h=1, I1=0.25, I1h=0.25, I2=0.125, I2h=0.125, F1=15, F1h=15, F2=15 , F2h=15, ref1=np.pi/2, ref2=-np.pi/2,
     #                 q10=np.pi/2, q20=np.pi/2, K1=62, K2=254)
-    sis = Sistema(m1=9.0, m1h=5.0, m2=5.0, m2h=3.0, L1=2, L1h=1.5, L2=1.5, L2h=1, 
-                  I1=0.4, I1h=0.25, I2=0.2, I2h=0.125, F1=20, F1h=15, 
-                  F2=20, F2h=15, ref1=np.pi/3, ref2=-np.pi/2, q10=1.127572188422499, q20=-0.02717109077810674, K1=74, K2=266,q30=0, q40=0, model_path='./out/model_uxt3.pt')
+    sis = Sistema(m1=6.0, m1h=5.0, m2=4.0, m2h=3.0, L1=1.2, L1h=1.5, L2=1, L2h=1, 
+                  I1=0.25, I1h=0.25, I2=0.125, I2h=0.125, F1=15, F1h=15, 
+                  F2=15, F2h=15, ref1=np.pi/6, ref2=np.pi/3, q10=0, q20=-0, K1=74, K2=266,q30=0, q40=0, model_path=os.path.join(array_folder, 'model_uxt_norm2.pt'))
     sis.run()
     #out, y = sis.getTrainingArray()
     xsis = []
@@ -277,14 +279,14 @@ def main():
     
     plt.subplot(1, 2, 1)
     plt.suptitle('Simulação controlador de modos deslizantes, grande erro parâmetros')
-    plt.plot(sis.t, sis._X[:][0], 'b', label='q1')
-    plt.plot(sis.t, sis._Y[:][0], 'r', label='q2')
+    plt.plot(sis.t, sis._X[:, 0][:-1], 'b', label='q1')
+    plt.plot(sis.t, sis._X[:, 1][:-1], 'r', label='q2')
     plt.grid()
     plt.legend ()
 
     plt.subplot(1, 2, 2)
-    plt.plot(sis.t, sis._X[:][1], 'b', label='q1d')
-    plt.plot(sis.t, sis._X[:][2], 'r', label='q2d')
+    plt.plot(sis.t, sis._X[:,2][:-1], 'b', label='q1d')
+    plt.plot(sis.t, sis._X[:, 3][:-1], 'r', label='q2d')
     plt.grid()
     plt.legend ()
 

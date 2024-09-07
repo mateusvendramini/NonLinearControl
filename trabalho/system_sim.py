@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 #import control as ct
 from numpy import pi
 #import scipy.integrate as spi
+rng = np.random.default_rng(seed=666)
+
+def map_random(min, max):
+    return min + (max-min)*rng.random()
 
 def sat(x):
     if x>=1:
@@ -49,7 +53,10 @@ class Sistema:
         # internal output variables
         self._U = np.empty((0,2))  
         self._X = np.empty((0,4))
-        self.t = np.linspace (0, 1/512., 64)
+        #self.t = np.linspace (0, 1/1024., 32)
+        self.t = np.linspace (0, 1/16384., 2)
+        
+        #np.random.seed(123)
 
         #cada vetor de saída vai ter o formato [[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat], ]
 
@@ -96,7 +103,7 @@ class Sistema:
         slin = np.matmul(H, sden)
         #s = np.array([[s(q1, q1d, t, lamb)], [s(q2, q2d, t, lamb)]])
 
-        U = q1dd_den-slin[0][0], q2dd_den-slin[1][0]-lamb*q2d
+        U = q1dd_den-slin[0][0]-lamb*q1d, q2dd_den-slin[1][0]-lamb*q2d
         self._U = np.concatenate((self._U, np.array([[U[0], U[1]]])))
         return U[0], U[1]
         #return 0.8*p1-50*(x[0]-ref(t)), 0.8*p2-50*(x[1]-ref(t)) 
@@ -142,7 +149,9 @@ class Sistema:
     def getTrainingArray(self):
         out = np.empty((0,16))
         Y = np.empty((0, 8))
-        y = np.array([[self.m1, self.m2, self.L1, self.L2, self.I1, self.I2, self.F1, self.F2]])
+        y = np.array([[(self.m1-2)/6+ map_random(-0.01, 0.01), (self.m2-1)/4+map_random(-0.01, 0.01), self.L1-1+map_random(-0.01, 0.01), 
+                       self.L2-0.5+map_random(-0.01, 0.01), (self.I1-0.1)/0.3 +map_random(-0.01, 0.01), (self.I2-0.05)/0.15 +map_random(-0.01, 0.01),
+                         (self.F1-10)/10 + map_random(-0.01, 0.01), (self.F2-10)/10 + map_random(-0.01, 0.01)]])
 
         # Cada elemento de saída vai ter o formato [[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat], ]
         for i in range(len(self._X)-1):
@@ -150,7 +159,8 @@ class Sistema:
                 self._X[i][0], self._X[i][1], self._X[i][2], self._X[i][3],
                 self._U[i][0], self._U[i][1],
                 self._X[i+1][2], self._X[i+1][3],
-                self.m1h, self.m2h, self.L1h, self.L2h, self.I1h, self.I2h, self.F1h, self.F2h
+                (self.m1h - 2)/6+ map_random(-0.01, 0.01), (self.m2h-1)/4 +map_random(-0.01, 0.01), (self.L1h-1)/1+map_random(-0.01, 0.01), self.L2h-0.5+map_random(-0.01, 0.01), (self.I1h-0.1)/0.3
+                +map_random(-0.01, 0.01), (self.I2h-0.05)/0.15+map_random(-0.01, 0.01), (self.F1h-10)/20+map_random(-0.01, 0.01), (self.F2h-10)/20+map_random(-0.01, 0.01)
             ]])))
             
             Y = np.concatenate((Y, y))
@@ -174,7 +184,9 @@ def main():
     # sis = Sistema(m1=5, m1h=5, m2=3, m2h=3, L1=1.5, L1h=1.5, 
     #               L2=1, L2h=1, I1=0.25, I1h=0.25, I2=0.125, I2h=0.125, F1=15, F1h=15, F2=15 , F2h=15, ref1=np.pi/2, ref2=-np.pi/2,
     #                 q10=np.pi/2, q20=np.pi/2, K1=62, K2=254)
-    sis = Sistema(m1=2.0975561637446507, m1h=1.9178533132322388, m2=0.9863902114286804, m2h=0.9651596624103864, L1=0.9165574998344682, L1h=1.0233902423594152, L2=0.49447895383476115, L2h=0.4404871475561963, I1=0.1033831643081498, I1h=0.1036096982291639, I2=0.04012892953284832, I2h=0.05330792550109102, F1=10, F1h=10, F2=10, F2h=10, ref1=np.pi/3, ref2=-np.pi/2, q10=1.127572188422499, q20=-0.02717109077810674, K1=74, K2=266)
+    sis = sis = Sistema(m1=8.0, m1h=5.0, m2=5.0, m2h=3.0, L1=2, L1h=1.5, L2=1.5, L2h=1, 
+                  I1=0.4, I1h=0.25, I2=0.2, I2h=0.125, F1=20, F1h=15, 
+                  F2=20, F2h=15, ref1=np.pi/3, ref2=-np.pi/2, q10=1.127572188422499, q20=-0.02717109077810674, K1=74, K2=266,q30=0, q40=0)
     sis.run()
     out, y = sis.getTrainingArray()
     xsis = []
@@ -204,5 +216,7 @@ def main():
 
     plt.show()
 
+    print('x=\r\n', out)
+    print('y=\r\n', y)
 if __name__ == '__main__':
     main()

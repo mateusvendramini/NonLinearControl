@@ -5,6 +5,9 @@ import itertools
 import multiprocessing
 from multiprocessing import Process, freeze_support
 import warnings
+array_folder = os.path.join('.', 'arrays_norm4')
+logs_folder = os.path.join('.', 'logs_norm4')
+
 def map_random(min, max, rand):
     return min + (max-min)*rand
 
@@ -32,15 +35,15 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
         print()
     
 def process(inputs, i):
-    s = 666 + i
+    s = 999 + i
     rng = np.random.default_rng(seed=s)
     Y = np.empty((0,8))  
     X = np.empty((0,16))
     j=0
     j_max=len(inputs)
-    j_notify = j_max//10
+    j_notify = j_max//1000
     log_fn = '{0}.log'.format(i)
-    log = os.path.join('.', 'logs2', log_fn)
+    log = os.path.join(logs_folder, log_fn)
     log_file = os.open(log, os.O_RDWR | os.O_CREAT)
     if (i==0):
         printProgressBar(j, j_max)
@@ -50,18 +53,18 @@ def process(inputs, i):
             warnings.filterwarnings('error')
             err1 = input[0] + map_random(-0.1, 0.1, rng.random())
             err2 = input[1] + map_random(-0.1, 0.1, rng.random())
-            sys = Sistema(5 + map_random(-3, 3, rng.random()), 5 + map_random(-3, 3, rng.random()), #m1
-                          3 + map_random(-2, 2, rng.random()), 3 + map_random(-2, 2, rng.random()), #m2
-                            1.5 + map_random(-0.5, 0.5, rng.random()), 1.5 + map_random(-0.5, 0.5, rng.random()), # L1
-                              1 + map_random(-0.5, 0.5, rng.random()), 1 + map_random(-0.5, 0.5, rng.random()),  #L2
-                              0.25 + map_random(-0.15, 0.15, rng.random()), 0.25 + map_random(-0.15, 0.15, rng.random()), # I1
-                              0.15 + map_random(-0.075, 0.075, rng.random()), 0.15 + map_random(-0.075, 0.075, rng.random()), #I2
-                15 + map_random(-5, 5, rng.random()), 15 + map_random(-5, 5, rng.random()), #F1
-                15 + map_random(-5, 5, rng.random()), 15 + map_random(-5, 5, rng.random()), #F2
-                err1, err2, #ref1, ref2
-                input[0] + map_random(-0.1, 0.1, rng.random()), input[1] + map_random(-0.1, 0.1, rng.random()), #q10, q20
-                74, 266, #K1, K2
-                map_random(0, err1*2, rng.random()), map_random(0, err2*2, rng.random())) 
+            sys = Sistema(m1=5 + map_random(-3, 3, rng.random()), m1h=5 + map_random(-3, 3, rng.random()), #m1
+                          m2=3 + map_random(-2, 2, rng.random()), m2h=3 + map_random(-2, 2, rng.random()), #m2
+                            L1=1.5 + map_random(-0.5, 0.5, rng.random()), L1h=1.5 + map_random(-0.5, 0.5, rng.random()), # L1
+                              L2=1 + map_random(-0.5, 0.5, rng.random()), L2h=1 + map_random(-0.5, 0.5, rng.random()),  #L2
+                              I1=0.25 + map_random(-0.15, 0.15, rng.random()), I1h=0.25 + map_random(-0.15, 0.15, rng.random()), # I1
+                              I2=0.125 + map_random(-0.075, 0.075, rng.random()), I2h=0.125 + map_random(-0.075, 0.075, rng.random()), #I2
+                F1=15 + map_random(-5, 5, rng.random()), F1h=15 + map_random(-5, 5, rng.random()), #F1
+                F2=15 + map_random(-5, 5, rng.random()), F2h=15 + map_random(-5, 5, rng.random()), #F2
+                ref1=err1, ref2=err2, #ref1, ref2
+                q10=input[0] + map_random(-0.1, 0.1, rng.random()), q20=input[1] + map_random(-0.1, 0.1, rng.random()), #q10, q20
+                K1=74, K2=266, #K1, K2
+                q30=map_random(0, err1*10, rng.random()), q40= map_random(0, err2*20, rng.random())) 
             try:
                 sys.run()
                 x, y = sys.getTrainingArray()
@@ -82,12 +85,21 @@ def process(inputs, i):
 
     x_file_name='x_{0}.out'.format(i)
     y_file_name='y_{0}.out'.format(i)
-    np.save(os.path.join('.', 'np_arrays2', x_file_name), X)
-    np.save(os.path.join('.', 'np_arrays2', y_file_name), Y)
+    np.save(os.path.join(array_folder, x_file_name), X)
+    np.save(os.path.join(array_folder, y_file_name), Y)
+
+    np.savetxt(os.path.join(array_folder, x_file_name), X)
+    np.savetxt(os.path.join(array_folder, y_file_name), Y)
+    #print('process {0} max m1 {1} min {0}'.format(i, np.maximum(X[:,0])))
     os.close(log_file)
 
 def main():
     freeze_support()
+    if not os.path.exists(array_folder):
+        os.makedirs(array_folder)
+    if not os.path.exists(logs_folder):
+        os.makedirs(logs_folder)
+
     #param_len = 1 # um dia 10
     #m1 = np.linspace(5, 5, param_len) #0 m1 err 3
     #m1h = np.linspace(5, 5, param_len)
@@ -105,8 +117,8 @@ def main():
     #F1h = np.linspace(15, 15, param_len)
     #F2 = np.linspace(15, 15, param_len) #14 5
     #F2h = np.linspace(15, 15, param_len)
-    q10 = np.linspace(np.pi/3, 5*np.pi/3, 16)
-    q20 = np.linspace(0, 2*np.pi, 16)
+    q10 = np.linspace(0, np.pi/2, 96)
+    q20 = np.linspace(0, np.pi/2, 96)
     q1jump = np.linspace(-np.pi/3, np.pi/3, 8)
     q2jump = np.linspace(-np.pi/2, np.pi/2, 8)
     #K1 = np.linspace(74.00, 74.00, 1)
@@ -123,7 +135,7 @@ def main():
     #input_list = input_list[0:input_len//1024]
     #print(len(input_list))
 
-    process_number = multiprocessing.cpu_count()//2
+    process_number = multiprocessing.cpu_count()#//2
     slices = []
     input_len = len (input_list)
     slice_size = input_len // process_number
