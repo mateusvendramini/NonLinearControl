@@ -62,7 +62,7 @@ def process(inputs, i):
                 F1=15 + map_random(-5, 5, rng.random()), F1h=15 + map_random(-5, 5, rng.random()), #F1
                 F2=15 + map_random(-5, 5, rng.random()), F2h=15 + map_random(-5, 5, rng.random()), #F2
                 ref1=err1, ref2=err2, #ref1, ref2
-                q10=input[0] + map_random(-0.1, 0.1, rng.random()), q20=input[1] + map_random(-0.1, 0.1, rng.random()), #q10, q20
+                q10=input[0] + map_random(-0.01, 0.01, rng.random()), q20=input[1] + map_random(-0.01, 0.01, rng.random()), #q10, q20
                 K1=74, K2=266, #K1, K2
                 q30=map_random(0, err1*10, rng.random()), q40= map_random(0, err2*20, rng.random())) 
             try:

@@ -239,8 +239,8 @@ def main():
     X = np.empty((0,16))
     #load data
     for i in range (8):
-        x_file_name='x_{0}.out.npy'.format(i)
-        y_file_name='y_{0}.out.npy'.format(i)
+        x_file_name='x_{0}_big.out.npy'.format(i)
+        y_file_name='y_{0}_big.out.npy'.format(i)
         x_path = (os.path.join(array_folder, x_file_name))
         y_path = (os.path.join(array_folder, y_file_name))
         x = np.load(x_path, 'r')
@@ -274,8 +274,9 @@ def main():
     #a_train = a[train_indices]
     train_validation = []
     test_validation = []
-    #X= X[0:3]
-    #Y = Y[0:3]
+    X= X[0:3]
+    Y = Y[0:3]
+    
     net = Net()
     #kaiming_init(net)
     loss = []
@@ -311,9 +312,10 @@ def main():
         optimizer.zero_grad() # to make the gradients zero
         net_bc_out = net(pt_x_bc)
         mse_u = mse_cost_function(net_bc_out, pt_y_bc)
-        #e, dv = model_loss(pt_x_bc, net, device)
-        #mse_f = mse_cost_function(e, dv)
-        loss = mse_u #+ mse_f
+        e, dv = model_loss(pt_x_bc, net, device)
+        mse_f = mse_cost_function(e, dv)
+
+        loss = mse_u + mse_f
         loss.backward() # This is for computing gradients using backward propagation
         optimizer.step() # This is equivalent to : theta_new = theta_old - alpha * derivative of J w.r.t theta
 

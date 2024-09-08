@@ -8,6 +8,22 @@ from generate_training import array_folder
 
 network_file = 'net_adam.pt'
 checkpoint_file = 'checkpoint_adam.pt'
+def map_m1 (num):
+    return map_var(num, 2, 8 )
+def map_m2(num):
+    return map_var(num, 1, 5)
+def map_l1(num):
+    return map_var(num, 1, 2)
+def map_l2(num):
+    return map_var(num, 0.5, 1.5)
+def map_I1(num):
+    return map_var(num, 0.1, 0.4)
+def map_I2(num):
+    return map_var(num, 0.05, 0.2)
+def map_F(num):
+    return map_var(num, 10, 20)
+def map_var (num, min, max):
+    return num*(max-min) + min
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0, low_delta=0):
@@ -38,12 +54,12 @@ class EarlyStopper:
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.hidden_layer1 = nn.Linear(16,96)
-        self.hidden_layer2 = nn.Linear(96,64)
+        self.hidden_layer1 = nn.Linear(16,80)
+        self.hidden_layer2 = nn.Linear(80,64)
         self.hidden_layer3 = nn.Linear(64,32)
         self.hidden_layer4 = nn.Linear(32,16)
         self.output_layer = nn.Linear(16,8)
-        self.act = torch.relu()
+        self.act = torch.relu
         #self.output_layer = nn.Linear(12,8)
 
     def forward(self, x):
@@ -52,7 +68,7 @@ class Net(nn.Module):
         layer2_out = self.act(self.hidden_layer2(layer1_out))
         layer3_out = self.act(self.hidden_layer3(layer2_out))
         layer4_out = self.act(self.hidden_layer4(layer3_out))
-        output =     (self.output_layer(layer4_out))
+        output =     torch.sigmoid(self.output_layer(layer4_out))
         #output = torch.sigmoid(self.output_layer(layer5_out)) ## For regression, no activation is used in output layer
         return output
     
@@ -66,9 +82,17 @@ def set_seed(seed):
 
 def H_(m1, m2, L1, L2, I1, I2, F1, F2, q1, q2, q3, q4):
     g = 9.8
-    a1 = I1 +(m1*L1*L1)/4 + m2*(L1*L1 + (L2*L2)/4)
-    a2 = I2 +(m2*L2**2)/4
-    a3 = m2*L1*L2/2
+    L1_qr = L1*L1
+    L1L2 = L1*L2
+    L2_qr = L2*L2
+    a1 = I1 + torch.mul(torch.mul(m1,L1_qr), 0.25)  
+    #m1L1 = torch.mul(m1,L1_qr)  
+    #a1 += torch.mul(m1L1, 0.25)
+    b = L1_qr + torch.mul(0.25, L2_qr)
+    a1 += torch.mul(m2, b)
+    #a1 = I1 +(m1*L1*L1)/4 + m2*(L1*L1 + (L2*L2)/4)
+    a2 = I2 +torch.mul(torch.mul(m2, L2_qr) , 0.25)
+    a3 = m2*L1L2/2
     
     #H = np.array([[a1+2*a3*np.cos(q2), a2+a3*np.cos(q2)],
     #                [a2+a3*np.cos(q2), a2]])
@@ -89,10 +113,16 @@ def f_(m1, m2, L1, L2, I1, I2, F1, F2, q1, q2, q3, q4):
     a3 = m2*L1*L2/2
     a4 = g*(m1*L1/2 + m2*L1)
     a5 = m2*g*L2/2
-    
-    q2dd_den = F2*q4+a5*torch.cos(q1+q2)+a3*torch.sin(q2)*(q3*q3)
-    q1dd_den = F1*q3+a4*torch.cos(q1)+a5*torch.cos(q1+q2)+2*a3*torch.sin(q2)*q3*q4+a3*torch.sin(q2)*(q4*q4)
+    #procurar erro aqui
+    F1_ = torch.mul(F1,q3)
+    F2_ = torch.mul(F2,q4)
 
+    C1_ = a4*torch.cos(q1)+a5*torch.cos(q1+q2)
+    C2_ = a5*torch.cos(q1+q2)
+    E1_ = -2*a3*torch.sin(q2)*q3*q4-a3*torch.sin(q2)*(q4*q4)
+    E2_ = a3*torch.sin(q2)*(q3*q3)
+    q1dd_den = F1_ + C1_ + E1_
+    q2dd_den = F2_+ C2_ + E2_
     
     return (-q1dd_den, -q2dd_den)
 
@@ -124,23 +154,25 @@ def model_loss_(x, u_hat, device):
     v1 = torch.index_select(x, 1, torch.tensor([6])).to(device)
     v2 = torch.index_select(x, 1, torch.tensor([7])).to(device)
 
-    m1x = torch.index_select(x, 1, torch.tensor([8])).to(device)
-    m2x = torch.index_select(x, 1, torch.tensor([9])).to(device)
-    L1x = torch.index_select(x, 1, torch.tensor([10])).to(device)
-    L2x = torch.index_select(x, 1, torch.tensor([11])).to(device)
-    I1x = torch.index_select(x, 1, torch.tensor([12])).to(device)
-    I2x = torch.index_select(x, 1, torch.tensor([13])).to(device)
-    F1x = torch.index_select(x, 1, torch.tensor([14])).to(device)
-    F2x = torch.index_select(x, 1, torch.tensor([15])).to(device)
+#todo inline talvez seja mais rápido ou talvez não
+
+    m1x = map_m1(torch.index_select(x, 1, torch.tensor([8])).to(device))
+    m2x = map_m2(torch.index_select(x, 1, torch.tensor([9])).to(device))
+    L1x = map_l1(torch.index_select(x, 1, torch.tensor([10])).to(device))
+    L2x = map_l2(torch.index_select(x, 1, torch.tensor([11])).to(device))
+    I1x = map_I1(torch.index_select(x, 1, torch.tensor([12])).to(device))
+    I2x = map_I2(torch.index_select(x, 1, torch.tensor([13])).to(device))
+    F1x = map_F(torch.index_select(x, 1, torch.tensor([14])).to(device))
+    F2x = map_F(torch.index_select(x, 1, torch.tensor([15])).to(device))
     
-    m1u = torch.index_select(u_hat, 1, torch.tensor([0])).to(device)
-    m2u = torch.index_select(u_hat, 1, torch.tensor([1])).to(device)
-    L1u = torch.index_select(u_hat, 1, torch.tensor([2])).to(device)
-    L2u = torch.index_select(u_hat, 1, torch.tensor([3])).to(device)
-    I1u = torch.index_select(u_hat, 1, torch.tensor([4])).to(device)
-    I2u = torch.index_select(u_hat, 1, torch.tensor([5])).to(device)
-    F1u = torch.index_select(u_hat, 1, torch.tensor([6])).to(device)
-    F2u = torch.index_select(u_hat, 1, torch.tensor([7])).to(device)
+    m1u = map_m1(torch.index_select(u_hat, 1, torch.tensor([0])).to(device))
+    m2u = map_m2(torch.index_select(u_hat, 1, torch.tensor([1])).to(device))
+    L1u = map_l1(torch.index_select(u_hat, 1, torch.tensor([2])).to(device))
+    L2u = map_l2(torch.index_select(u_hat, 1, torch.tensor([3])).to(device))
+    I1u = map_I1(torch.index_select(u_hat, 1, torch.tensor([4])).to(device))
+    I2u = map_I2(torch.index_select(u_hat, 1, torch.tensor([5])).to(device))
+    F1u = map_F (torch.index_select(u_hat, 1, torch.tensor([6])).to(device))
+    F2u = map_F (torch.index_select(u_hat, 1, torch.tensor([7])).to(device))
 
     
     # u_from_x = torch.tensor([
@@ -154,10 +186,10 @@ def model_loss_(x, u_hat, device):
     #q3 = x[2]
     #q4 = x[3]
     dt = 0.000030517578125
-    Hi11, Hi12, Hi21, Hi22 = H_(m1u, m2u, L1u, L2u, I1u, I2u, F1u, F2u, q1, q2, q3, q4)
-    Hi_next11, Hi_next12, Hi_next21, Hi_next22 = H_(m1x, m2x, L1x, L2x, I1x, I2x, F1x, F2x, q1, q2, q3, q4)#.to(device) #q1, q2, q3, q4
-    fi_next1, fi_next2 = f_(m1x, m2x, L1x, L2x, I1x, I2x, F1x, F2x, q1, q2, q3, q4) # formato 
-    fi1, fi2  =      f_(m1u, m2u, L1u, L2u, I1u, I2u, F1u, F2u, q1, q2, q3, q4)#.to(device)
+    Hi_next11, Hi_next12, Hi_next21, Hi_next22 = H_(m1u, m2u, L1u, L2u, I1u, I2u, F1u, F2u, q1, q2, q3, q4)
+    Hi11, Hi12, Hi21, Hi22 = H_(m1x, m2x, L1x, L2x, I1x, I2x, F1x, F2x, q1, q2, q3, q4)#.to(device) #q1, q2, q3, q4
+    fi1, fi2  = f_(m1x, m2x, L1x, L2x, I1x, I2x, F1x, F2x, q1, q2, q3, q4) # formato 
+    fi_next1, fi_next2 = f_(m1u, m2u, L1u, L2u, I1u, I2u, F1u, F2u, q1, q2, q3, q4)#.to(device)
 
     #Hi = Hi.to(device)
     den = 1/(Hi_next11*Hi_next22 - Hi_next12*Hi_next21)
@@ -182,23 +214,12 @@ def model_loss_(x, u_hat, device):
     #np.matmul()
     return torch.cat((e1, e2), 1), torch.cat((dv1, dv2), 1)
 
-def model_loss(x, net, device):
+def model_loss(x, net_out, device):
 
-    i = 0
-    u =net(x)
+    #i = 0
+    #u =net(x)
     
-    return model_loss_(x, u, device)
-# def my_mse(a, b):
-#     a = a.detach().numpy()
-#     b = b.detach().numpy()
-#     err = a - b
-#     out = 0.00
-#     len_a = len(a)
-#     for i in range(len_a):
-#         out = np.nansum(np.array([np.dot(err[i][0], err[i][0])/len_a, out]))
-#     tensor_out = torch.from_numpy(np.array([out]))
-#     return tensor_out
-
+    return model_loss_(x, net_out, device)
 def main():
     device = torch_directml.device() #torch.device("cpu")#torch_directml.device()
     print('using device ', device)
@@ -211,9 +232,9 @@ def main():
     Y = np.empty((0,8))  
     X = np.empty((0,16))
     #load data
-    for i in range (16):
-        x_file_name='x_{0}.out.npy'.format(i)
-        y_file_name='y_{0}.out.npy'.format(i)
+    for i in range (8):
+        x_file_name='x_{0}_big.out.npy'.format(i)
+        y_file_name='y_{0}_big.out.npy'.format(i)
         x_path = (os.path.join(array_folder, x_file_name))
         y_path = (os.path.join(array_folder, y_file_name))
         x = np.load(x_path, 'r')
@@ -260,7 +281,7 @@ def main():
         loss = checkpoint['loss']
         net.train()
     except Exception:
-        print('Erro ao carregar ', Exception)
+        print('Erro ao carregar ', Exception,Exception.args)
         net = net.to(device)
         optimizer = torch.optim.Adam(params=net.parameters(), foreach=True)
 
@@ -270,8 +291,8 @@ def main():
     
     ### (3) Training / Fitting
     iterations = 1500
-    pt_x_bc = Variable(torch.from_numpy(X_train).float(), requires_grad=False).to(device)
-    pt_y_bc = Variable(torch.from_numpy(Y_train).float(), requires_grad=False).to(device)
+    pt_x_bc = torch.from_numpy(X_train).float().to(device)
+    pt_y_bc = torch.from_numpy(Y_train).float().to(device)
 
     #pt_x_validation = Variable(torch.from_numpy(X_test).float(), requires_grad=False).to(device)
     #pt_y_validation = Variable(torch.from_numpy(Y_test).float(), requires_grad=False).to(device)
@@ -282,7 +303,7 @@ def main():
         net_bc_out = net(pt_x_bc)
         mse_u = mse_cost_function(net_bc_out, pt_y_bc)
         #loss = mse_cost_function(net_bc_out, pt_y_bc)
-        e, dv = model_loss(pt_x_bc, net, device)
+        e, dv = model_loss(pt_x_bc, net_bc_out, device)
         loss = mse_u + mse_cost_function(e, dv)
         #loss = mse_u + mse_f
 
@@ -305,7 +326,17 @@ def main():
         # if (early_stop.early_stop(valitation_loss.cpu().data.numpy())):
         #     print("training halt")
         #     break
-        
+        if epoch % 100 == 0:
+            print('saving model')
+            loss_saved = loss.cpu
+            net_save = net.cpu()
+            #optimizer_saved = optimizer.cpu()
+            torch.save({
+            'loss' : loss_saved,
+            'model_dict' : net_save.state_dict(),
+            'optimizer_state_dict' : optimizer.state_dict(),
+            }, os.path.join(array_folder, checkpoint_file))
+
         with torch.autograd.no_grad():
     	    print(epoch,"Traning Loss:",loss.data)#,",Validation Loss:", valitation_loss.data)
             
