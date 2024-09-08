@@ -4,6 +4,10 @@ from torch.autograd import Variable
 import torch_directml
 import numpy as np
 import os
+from generate_training import array_folder
+
+network_file = 'net_adam.pt'
+checkpoint_file = 'checkpoint_adam.pt'
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0, low_delta=0):
@@ -20,7 +24,9 @@ class EarlyStopper:
                 self.low_dloss_counter+=1
                 if self.low_dloss_counter >= self.patience:
                     return True
+                
             self.min_validation_loss = validation_loss
+            self.low_dloss_counter = 0
             self.counter = 0
         elif validation_loss > (self.min_validation_loss + self.min_delta):
             self.counter += 1
@@ -32,21 +38,22 @@ class EarlyStopper:
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.hidden_layer1 = nn.Linear(16,20)
-        self.hidden_layer2 = nn.Linear(20,18)
-        self.hidden_layer3 = nn.Linear(18,16)
-        self.hidden_layer4 = nn.Linear(16,14)
-        self.hidden_layer5 = nn.Linear(14,12)
-        self.output_layer = nn.Linear(12,8)
+        self.hidden_layer1 = nn.Linear(16,96)
+        self.hidden_layer2 = nn.Linear(96,64)
+        self.hidden_layer3 = nn.Linear(64,32)
+        self.hidden_layer4 = nn.Linear(32,16)
+        self.output_layer = nn.Linear(16,8)
+        self.act = torch.relu()
+        #self.output_layer = nn.Linear(12,8)
 
     def forward(self, x):
         #inputs = torch.cat([x,t],axis=1) # combined two arrays of 1 columns each to one array of 2 columns
-        layer1_out = torch.sigmoid(self.hidden_layer1(x))
-        layer2_out = torch.sigmoid(self.hidden_layer2(layer1_out))
-        layer3_out = torch.sigmoid(self.hidden_layer3(layer2_out))
-        layer4_out = torch.sigmoid(self.hidden_layer4(layer3_out))
-        layer5_out = torch.sigmoid(self.hidden_layer5(layer4_out))
-        output = self.output_layer(layer5_out) ## For regression, no activation is used in output layer
+        layer1_out = self.act(self.hidden_layer1(x))
+        layer2_out = self.act(self.hidden_layer2(layer1_out))
+        layer3_out = self.act(self.hidden_layer3(layer2_out))
+        layer4_out = self.act(self.hidden_layer4(layer3_out))
+        output =     (self.output_layer(layer4_out))
+        #output = torch.sigmoid(self.output_layer(layer5_out)) ## For regression, no activation is used in output layer
         return output
     
 def set_seed(seed):
@@ -204,11 +211,11 @@ def main():
     Y = np.empty((0,8))  
     X = np.empty((0,16))
     #load data
-    for i in range (8):
+    for i in range (16):
         x_file_name='x_{0}.out.npy'.format(i)
         y_file_name='y_{0}.out.npy'.format(i)
-        x_path = (os.path.join('.', 'trabalho','np_arrays2', x_file_name))
-        y_path = (os.path.join('.', 'trabalho','np_arrays2', y_file_name))
+        x_path = (os.path.join(array_folder, x_file_name))
+        y_path = (os.path.join(array_folder, y_file_name))
         x = np.load(x_path, 'r')
         X = np.concatenate((X, x))
         y = np.load(y_path, 'r')
@@ -242,54 +249,88 @@ def main():
     #X= X[0:3]
     #Y = Y[0:3]
     net = Net()
-    net = net.to(device)
+
+    try:
+        model_path=os.path.join(array_folder, checkpoint_file)
+        checkpoint = torch.load(model_path, weights_only=False)
+        net.load_state_dict(checkpoint['model_dict'])
+        net = net.to(device)
+        optimizer = torch.optim.Adam(params=net.parameters(), foreach=True)
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        loss = checkpoint['loss']
+        net.train()
+    except Exception:
+        print('Erro ao carregar ', Exception)
+        net = net.to(device)
+        optimizer = torch.optim.Adam(params=net.parameters(), foreach=True)
+
+    #net = net.to(device)
     mse_cost_function = torch.nn.MSELoss() # Mean squared error
-    optimizer = torch.optim.Adam(net.parameters())
+    #optimizer = torch.optim.Adam(net.parameters())
     
     ### (3) Training / Fitting
-    iterations = 13000
+    iterations = 1500
     pt_x_bc = Variable(torch.from_numpy(X_train).float(), requires_grad=False).to(device)
     pt_y_bc = Variable(torch.from_numpy(Y_train).float(), requires_grad=False).to(device)
 
-    pt_x_validation = Variable(torch.from_numpy(X_test).float(), requires_grad=False).to(device)
-    pt_y_validation = Variable(torch.from_numpy(Y_test).float(), requires_grad=False).to(device)
-    early_stop = EarlyStopper(5, 0.1, 0.00001)
+    #pt_x_validation = Variable(torch.from_numpy(X_test).float(), requires_grad=False).to(device)
+    #pt_y_validation = Variable(torch.from_numpy(Y_test).float(), requires_grad=False).to(device)
+    #early_stop = EarlyStopper(5, 0.1, 0.00001)
     #previous_validation_loss = 99999999.0
     for epoch in range(iterations):
         optimizer.zero_grad() # to make the gradients zero
         net_bc_out = net(pt_x_bc)
         mse_u = mse_cost_function(net_bc_out, pt_y_bc)
+        #loss = mse_cost_function(net_bc_out, pt_y_bc)
         e, dv = model_loss(pt_x_bc, net, device)
-        mse_f = mse_cost_function(e, dv)
-        loss = mse_u + mse_f
-
-        #@torch.no_grad
-        net_bc_out = net(pt_x_validation)
-        mse_u = mse_cost_function(net_bc_out, pt_y_validation)
-        e, dv = model_loss(pt_x_validation, net, device)
-        mse_f = mse_cost_function(e, dv)
-        valitation_loss = mse_u + mse_f
+        loss = mse_u + mse_cost_function(e, dv)
+        #loss = mse_u + mse_f
 
         loss.backward() # This is for computing gradients using backward propagation
         optimizer.step() # This is equivalent to : theta_new = theta_old - alpha * derivative of J w.r.t theta
 
-        train_validation.append(loss.cpu().data.numpy())
-        test_validation.append(valitation_loss.cpu().data.numpy())
+        #@torch.no_grad
+        # net_bc_out = net(pt_x_validation)
+        # mse_u = mse_cost_function(net_bc_out, pt_y_validation)
+        # e, dv = model_loss(pt_x_validation, net, device)
+        # mse_f = mse_cost_function(e, dv)
+        # valitation_loss = mse_u + mse_f
 
-        if (early_stop.early_stop(valitation_loss.cpu().data.numpy())):
-            print("training halt")
-            break
+        #loss.backward() # This is for computing gradients using backward propagation
+        #optimizer.step() # This is equivalent to : theta_new = theta_old - alpha * derivative of J w.r.t theta
+
+        #train_validation.append(loss.cpu().data.numpy())
+        #test_validation.append(valitation_loss.cpu().data.numpy())
+
+        # if (early_stop.early_stop(valitation_loss.cpu().data.numpy())):
+        #     print("training halt")
+        #     break
         
         with torch.autograd.no_grad():
-    	    print(epoch,"Traning Loss:",loss.data,",Validation Loss:", valitation_loss.data)
+    	    print(epoch,"Traning Loss:",loss.data)#,",Validation Loss:", valitation_loss.data)
             
 
-    np.save(os.path.join('.', 'out', 'train_deep.loss'), np.array(train_validation))
-    np.save(os.path.join('.', 'out', 'test_deep.loss'), np.array(test_validation))
+    #np.save(os.path.join(array_folder, 'train_deep.loss'), np.array(train_validation))
+    #np.save(os.path.join(array_folder,'test_deep.loss'), np.array(test_validation))
 
+    #print('saving model')
 
     print('saving model')
-    torch.save(net.state_dict(), os.path.join('.', 'out', 'model_uxt_deepNeurons.pt'))
+    torch.save(net.state_dict(), os.path.join(array_folder, network_file))
+    net = net.cpu()
+    loss = loss.cpu()
+    torch.save({
+        'loss' : loss,
+        'model_dict' : net.state_dict(),
+        'optimizer_state_dict' : optimizer.state_dict(),
+    }, os.path.join(array_folder, checkpoint_file))
+
+    pt_x_validation = Variable(torch.from_numpy(X_test[0:10]).float(), requires_grad=False).to(device)
+    pt_y_validation = Variable(torch.from_numpy(Y_test[0:10]).float(), requires_grad=False).to(device)
+    Y_predicted = net.forward(pt_x_validation)
+    for i in range (10):
+        print(i, ' entry[\r\n', pt_x_validation[i],'] predicted\r\n',Y_predicted[i],'golden', pt_y_validation[i])
+
 
 if __name__ == '__main__':
     main()

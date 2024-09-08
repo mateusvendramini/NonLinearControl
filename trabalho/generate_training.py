@@ -5,8 +5,8 @@ import itertools
 import multiprocessing
 from multiprocessing import Process, freeze_support
 import warnings
-array_folder = os.path.join('.', 'arrays_norm4')
-logs_folder = os.path.join('.', 'logs_norm4')
+array_folder = os.path.join('.', 'arrays_big')
+logs_folder = os.path.join('.', 'logs_big')
 
 def map_random(min, max, rand):
     return min + (max-min)*rand
@@ -83,8 +83,8 @@ def process(inputs, i):
 
 
 
-    x_file_name='x_{0}.out'.format(i)
-    y_file_name='y_{0}.out'.format(i)
+    x_file_name='x_{0}_big.out'.format(i)
+    y_file_name='y_{0}_big.out'.format(i)
     np.save(os.path.join(array_folder, x_file_name), X)
     np.save(os.path.join(array_folder, y_file_name), Y)
 
@@ -117,10 +117,10 @@ def main():
     #F1h = np.linspace(15, 15, param_len)
     #F2 = np.linspace(15, 15, param_len) #14 5
     #F2h = np.linspace(15, 15, param_len)
-    q10 = np.linspace(0, np.pi/2, 96)
-    q20 = np.linspace(0, np.pi/2, 96)
-    q1jump = np.linspace(-np.pi/3, np.pi/3, 8)
-    q2jump = np.linspace(-np.pi/2, np.pi/2, 8)
+    q10 = np.linspace(0, np.pi/6, 96)
+    q20 = np.linspace(0, np.pi/6, 96)
+    q1jump = np.linspace(-np.pi/3, np.pi/3, 16)
+    q2jump = np.linspace(-np.pi/2, np.pi/2, 16)
     #K1 = np.linspace(74.00, 74.00, 1)
     #K2 = (266.00, 266.00, 1)
     # m1, m1h, m2, m2h, L1, L1h, L2, L2h, I1, I1h, I2, I2h, F1, F1h, F2, F2h, ref1, ref2, q10, q20, K1, K2):
@@ -135,7 +135,7 @@ def main():
     #input_list = input_list[0:input_len//1024]
     #print(len(input_list))
 
-    process_number = multiprocessing.cpu_count()#//2
+    process_number = multiprocessing.cpu_count()//2
     slices = []
     input_len = len (input_list)
     slice_size = input_len // process_number
