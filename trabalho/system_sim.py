@@ -54,7 +54,7 @@ class Sistema:
         self._U = np.empty((0,2))  
         self._X = np.empty((0,4))
         #self.t = np.linspace (0, 1/1024., 32)
-        self.t = np.linspace (0, 1/16384., 2)
+        self.t = np.linspace (0, 5*1/16384., 5*2)
         
         #np.random.seed(123)
 
@@ -149,8 +149,8 @@ class Sistema:
     def getTrainingArray(self):
         out = np.empty((0,16))
         Y = np.empty((0, 8))
-        y = np.array([[(self.m1-2)/6+ map_random(-0.01, 0.01), (self.m2-1)/4+map_random(-0.01, 0.01), self.L1-1+map_random(-0.01, 0.01), 
-                       self.L2-0.5+map_random(-0.01, 0.01), (self.I1-0.1)/0.3 +map_random(-0.01, 0.01), (self.I2-0.05)/0.15 +map_random(-0.01, 0.01),
+        y = np.array([[(self.m1-2)/6, (self.m2-1)/4, self.L1-1, 
+                       self.L2-0.5, (self.I1-0.1)/0.3, (self.I2-0.05)/0.15,
                          (self.F1-10)/10 + map_random(-0.01, 0.01), (self.F2-10)/10 + map_random(-0.01, 0.01)]])
 
         # Cada elemento de saída vai ter o formato [[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat], ]
@@ -159,8 +159,8 @@ class Sistema:
                 self._X[i][0], self._X[i][1], self._X[i][2], self._X[i][3],
                 self._U[i][0], self._U[i][1],
                 self._X[i+1][2], self._X[i+1][3],
-                (self.m1h - 2)/6+ map_random(-0.01, 0.01), (self.m2h-1)/4 +map_random(-0.01, 0.01), (self.L1h-1)/1+map_random(-0.01, 0.01), self.L2h-0.5+map_random(-0.01, 0.01), (self.I1h-0.1)/0.3
-                +map_random(-0.01, 0.01), (self.I2h-0.05)/0.15+map_random(-0.01, 0.01), (self.F1h-10)/20+map_random(-0.01, 0.01), (self.F2h-10)/20+map_random(-0.01, 0.01)
+                (self.m1h - 2)/6, (self.m2h-1)/4, (self.L1h-1)/1, self.L2h-0.5, (self.I1h-0.1)/0.3
+                , (self.I2h-0.05)/0.15, (self.F1h-10)/20, (self.F2h-10)/20
             ]])))
             
             Y = np.concatenate((Y, y))

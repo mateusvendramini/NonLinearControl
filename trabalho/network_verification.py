@@ -9,7 +9,7 @@ import train_network2
 from numpy import pi
 #import scipy.integrate as spi
 from generate_training import array_folder
-
+from normalize_inputs import Normalize
 
 def sat(x):
     if x>=1:
@@ -80,7 +80,16 @@ class Sistema:
         self.net.load_state_dict(torch.load(model_path))
         self.net.eval()
         self.learning_parameters = True
-
+        self.Norm = Normalize()
+        self.i = 0
+        self.dm1 = 0
+        self.dm2 = 0
+        self.dL1 = 0
+        self.dL2 = 0
+        self.dI1 = 0
+        self.dI2 = 0
+        self.dF1 = 0
+        self.dF2 = 0
         #cada vetor de saída vai ter o formato [[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat], ]
 
         
@@ -95,41 +104,89 @@ class Sistema:
         if (i < 2):
             return
         if (not self.learning_parameters):
-            self.m_sqerror.append((self.m1h-self.m1)**2 + (self.m2h-self.m2)**2 + 
+            self.m_sqerror.append(((self.m1h-self.m1)/6)**2 + ((self.m2h-self.m2)/4)**2 + 
                               (self.L1h-self.L1)**2 + (self.L2h-self.L2)**2+
-                              (self.I1h-self.I1)**2 + (self.I2h-self.I2)**2 + 
-                              (self.F1h-self.F1)**2 + (self.F2h-self.F2)**2)
+                              (((self.I1h-self.I1)/0.3))**2 + ((self.I2h-self.I2)/0.15)**2 + 
+                              (((self.F1h-self.F1)/10))**2 + ((self.F2h-self.F2)/10)**2)
             return
-
+        if(self._X[i-1][0] < 0 or self._X[i-1][1] <0 or self._X[i-1][0] > np.pi/24 or self._X[i-1][1] > np.pi/24):
+            #outside learning interval
+            self.m_sqerror.append(((self.m1h-self.m1)/6)**2 + ((self.m2h-self.m2)/4)**2 + 
+                              (self.L1h-self.L1)**2 + (self.L2h-self.L2)**2+
+                              (((self.I1h-self.I1)/0.3))**2 + ((self.I2h-self.I2)/0.15)**2 + 
+                              (((self.F1h-self.F1)/10))**2 + ((self.F2h-self.F2)/10)**2)
+            return
+            
         #
         x = torch.tensor([[self._X[i-1][0], self._X[i-1][1], self._X[i-1][2], self._X[i-1][3],
                 self._U[i-1][0], self._U[i-1][1],
                 self._X[i][2], self._X[i][3],
                 (self.m1h-2)/6, (self.m2h-1)/4, self.L1h-1, self.L2h-1, (self.I1h-0.1)/0.3, (self.I2h-0.05)/0.15, (self.F1h-10)/10, (self.F2h-10)/10]]) #has to be normlz
-        x = x.to(torch.float32)
-        m_new = self.net(x).numpy()
-        dm1 = ((m_new[0][0])*6+2 - self.m1h)
-        dm2 = ((m_new[0][1])*4+1 - self.m2h)
-        dL1 = ((m_new[0][2]+1) - self.L1h)
-        dL2 = (m_new[0][3]+0.5 - self.L2h)
-        dI1 = ((m_new[0][4])*0.3 +0.1 - self.I1h)
-        dI2 = ((m_new[0][5])*0.125+0.05 - self.I2h)
-        dF1 = ((m_new[0][6])*10+10 - self.F1h)
-        dF2 = ((m_new[0][7])*10+10 - self.F2h)
-        self.m1h = self.m1h + 0.01*dm1
-        self.m2h = self.m2h + 0.01*dm2
-        self.L1h = self.L1h + 0.01*dL1
-        self.L2h = self.L2h + 0.01*dL2
-        self.I1h = self.I1h + 0.01*dI1
-        self.I2h = self.I2h + 0.01*dI2
-        self.F1h = self.F1h + 0.01*dF1
-        self.F2h = self.F2h + 0.01*dF2
         
-        self.m_sqerror.append((self.m1h-self.m1)**2 + (self.m2h-self.m2)**2 + 
+        x = self.Norm.normalize_input(x)
+        x = x.to(torch.float32)
+
+        m_new = self.net(x).detach().numpy()
+        m_new = m_new - 0.5
+        dm1 = 6*(m_new[0][0])#((m_new[0][0])*6+2 - self.m1h)
+        dm2 = 4*(m_new[0][1])#((m_new[0][1])*4+1 - self.m2h)
+        dL1 = m_new[0][2]#((m_new[0][2]+1) - self.L1h)
+        dL2 = m_new[0][3]#(m_new[0][3]+0.5 - self.L2h)
+        dI1 = 0.3*(m_new[0][4])#((m_new[0][4])*0.3 +0.1 - self.I1h)
+        dI2 = 0.15*m_new[0][5] #((m_new[0][5])*0.125+0.05 - self.I2h)
+        dF1 = 10*m_new[0][6]  #((m_new[0][6])*10+10 - self.F1h)
+        dF2 = 10*m_new[0][7]  #((m_new[0][7])*10+10 - self.F2h)
+        # if (self.i < 10):
+        #     self.dm1 += dm1/10
+        #     self.dm2 += dm2/10
+        #     self.dL1 += dL1/10
+        #     self.dL2 += dL2/10
+        #     self.dI1 += dI1/10
+        #     self.dI2 += dI2/10
+        #     self.dF1 += dF1/10
+        #     self.dF2 += dF2/10
+        #     self.m_sqerror.append(((self.m1h-self.m1)/6)**2 + ((self.m2h-self.m2)/4)**2 + 
+        #                       (self.L1h-self.L1)**2 + (self.L2h-self.L2)**2+
+        #                       (((self.I1h-self.I1)/0.3))**2 + ((self.I2h-self.I2)/0.15)**2 + 
+        #                       (((self.F1h-self.F1)/10))**2 + ((self.F2h-self.F2)/10)**2)
+        #     self.i += 1
+        #     return
+            
+        # else:
+        #     self.i = 0
+        #     dm1 = dm1/10 + self.dm1
+        #     dm2 = dm2/10 + self.dm2
+        #     dL1 = dL1/10 + self.dL1
+        #     dL2 = dL2/10 + self.dL2
+        #     dI1 = dI1/10 + self.dI1
+        #     dI2 = dI2/10 + self.dI2
+        #     dF1 = dF1/10 + self.dF1
+        #     dF2 = dF2/10 + self.dF2
+
+        #     self.dm1 = 0
+        #     self.dm2 = 0
+        #     self.dL1 = 0
+        #     self.dL2 = 0
+        #     self.dI1 = 0
+        #     self.dI2 = 0
+        #     self.dF1 = 0
+        #     self.dF2 = 0
+
+        self.m1h = self.m1h + 0.05*dm1
+        self.m2h = self.m2h + 0.05*dm2
+        self.L1h = self.L1h + 0.05*dL1
+        self.L2h = self.L2h + 0.05*dL2
+        self.I1h = self.I1h + 0.05*dI1
+        self.I2h = self.I2h + 0.05*dI2
+        self.F1h = self.F1h + 0.05*dF1
+        self.F2h = self.F2h + 0.05*dF2
+        
+        self.m_sqerror.append(((self.m1h-self.m1)/6)**2 + ((self.m2h-self.m2)/4)**2 + 
                               (self.L1h-self.L1)**2 + (self.L2h-self.L2)**2+
-                              (self.I1h-self.I1)**2 + (self.I2h-self.I2)**2 + 
-                              (self.F1h-self.F1)**2 + (self.F2h-self.F2)**2)
-        if np.sqrt((dm1**2 + dm2**2 + dL1**2 + dL2**2 + dI1**2 + dI2**2 + dF1**2 + dF2**2)/8) < 0.00001:
+                              (((self.I1h-self.I1)/0.3))**2 + ((self.I2h-self.I2)/0.15)**2 + 
+                              (((self.F1h-self.F1)/10))**2 + ((self.F2h-self.F2)/10)**2)
+        var = np.sqrt((dm1/6)**2 + (dm2/4)**2 + dL1**2 + dL2**2 + (dI1/0.3)**2 + (dI2/0.15)**2 + (dF1/10)**2 + (dF2/10)**2)
+        if var < 0.001:
             self.learning_parameters = 0
             print('finished learning parameters')
         return
@@ -137,6 +194,8 @@ class Sistema:
 
     def u (self, x, t, i):
         #return 0,0
+        
+        self.update_control(i)
         m1 = self.m1h
         m2 = self.m2h
         L1 = self.L1h
@@ -146,8 +205,6 @@ class Sistema:
         F1= self.F1h
         F2= self.F2h
         g = 9.8
-        
-        self.update_control(i)
 
         a1 = I1 +(m1*L1*L1)/4 + m2*(L1**2 + (L2**2)/4)
         a2 = I2 +(m2*L2**2)/4
@@ -254,9 +311,9 @@ def main():
     # sis = Sistema(m1=5, m1h=5, m2=3, m2h=3, L1=1.5, L1h=1.5, 
     #               L2=1, L2h=1, I1=0.25, I1h=0.25, I2=0.125, I2h=0.125, F1=15, F1h=15, F2=15 , F2h=15, ref1=np.pi/2, ref2=-np.pi/2,
     #                 q10=np.pi/2, q20=np.pi/2, K1=62, K2=254)
-    sis = Sistema(m1=6.0, m1h=5.0, m2=4.0, m2h=3.0, L1=1.2, L1h=1.5, L2=1, L2h=1, 
-                  I1=0.25, I1h=0.25, I2=0.125, I2h=0.125, F1=15, F1h=15, 
-                  F2=15, F2h=15, ref1=np.pi/6, ref2=np.pi/3, q10=0, q20=-0, K1=74, K2=266,q30=0, q40=0, model_path=os.path.join(array_folder, 'model_uxt_norm2.pt'))
+    sis = Sistema(m1=5.5, m1h=5.0, m2=3.5, m2h=3.0, L1=1.6, L1h=1.5, L2=1.2, L2h=1, 
+                  I1=0.30, I1h=0.25, I2=0.150, I2h=0.125, F1=16, F1h=15, 
+                  F2=16, F2h=15, ref1=np.pi/24, ref2=np.pi/24, q10=0, q20=-0, K1=74, K2=266,q30=0, q40=0, model_path=os.path.join(array_folder, 'net_adam_mseonly.pt'))
     sis.run()
     #out, y = sis.getTrainingArray()
     xsis = []
@@ -278,7 +335,7 @@ def main():
 
     
     plt.subplot(1, 2, 1)
-    plt.suptitle('Simulação controlador de modos deslizantes, grande erro parâmetros')
+    plt.suptitle('Simulação sistema com estimador de parâmetros')
     plt.plot(sis.t, sis._X[:, 0][:-1], 'b', label='q1')
     plt.plot(sis.t, sis._X[:, 1][:-1], 'r', label='q2')
     plt.grid()
@@ -291,7 +348,8 @@ def main():
     plt.legend ()
 
     plt.figure()
-    plt.plot(sis.t[2:], sis.m_sqerror, 'r', label='m_squared')
+    plt.title('Erro quadrático parâmetros normalizados')
+    plt.plot(sis.t[2:6556], sis.m_sqerror[:6554], 'r', label='m_squared')
     plt.show()
 
     print("parametros estimados no final {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}".format(

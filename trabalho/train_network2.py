@@ -1,13 +1,20 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import torch.utils
+import torch.utils.checkpoint
 import torch_directml
 import numpy as np
 import os
 from generate_training import array_folder
+from normalize_inputs import  Normalize
+x_offset_tensor = None
+y_offset_tensor = None
+x_mod_tensor = None
+y_mod_tensor = None
 
-network_file = 'net_adam.pt'
-checkpoint_file = 'checkpoint_adam.pt'
+network_file = 'net_adam_mseonly.pt'
+checkpoint_file = 'checkpoint_adammseonly.pt'
 def map_m1 (num):
     return map_var(num, 2, 8 )
 def map_m2(num):
@@ -24,6 +31,8 @@ def map_F(num):
     return map_var(num, 10, 20)
 def map_var (num, min, max):
     return num*(max-min) + min
+#def unomalize(X, Y):
+    
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0, low_delta=0):
@@ -50,26 +59,42 @@ class EarlyStopper:
                 return True
         return False
     
-
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.hidden_layer1 = nn.Linear(16,80)
-        self.hidden_layer2 = nn.Linear(80,64)
-        self.hidden_layer3 = nn.Linear(64,32)
-        self.hidden_layer4 = nn.Linear(32,16)
-        self.output_layer = nn.Linear(16,8)
-        self.act = torch.relu
-        #self.output_layer = nn.Linear(12,8)
-
+        self.layers = nn.Sequential(
+            nn.Linear(16, 256),
+            nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 32),
+            nn.ReLU(),
+            nn.Linear(32, 8),
+            nn.Sigmoid()
+        )
     def forward(self, x):
-        #inputs = torch.cat([x,t],axis=1) # combined two arrays of 1 columns each to one array of 2 columns
-        layer1_out = self.act(self.hidden_layer1(x))
-        layer2_out = self.act(self.hidden_layer2(layer1_out))
-        layer3_out = self.act(self.hidden_layer3(layer2_out))
-        layer4_out = self.act(self.hidden_layer4(layer3_out))
-        output =     torch.sigmoid(self.output_layer(layer4_out))
-        #output = torch.sigmoid(self.output_layer(layer5_out)) ## For regression, no activation is used in output layer
+        return self.layers(x)
+    
+# class Net(nn.Module):
+#     def __init__(self):
+#         super(Net, self).__init__()
+#         #self.layers = nn.Sequential()
+#         self.hidden_layer1 = nn.Linear(16,96)
+#         self.hidden_layer2 = nn.Linear(96,48)
+#         self.hidden_layer3 = nn.Linear(48,32)
+#         self.hidden_layer4 = nn.Linear(32,16)
+#         self.output_layer = nn.Linear(16,8)
+#         self.act = torch.relu
+#         #self.output_layer = nn.Linear(12,8)
+
+#     def forward(self, x):
+#         #inputs = torch.cat([x,t],axis=1) # combined two arrays of 1 columns each to one array of 2 columns
+#         layer1_out = self.act(self.hidden_layer1(x))
+#         layer2_out = self.act(self.hidden_layer2(layer1_out))
+#         layer3_out = self.act(self.hidden_layer3(layer2_out))
+#         layer4_out = self.act(self.hidden_layer4(layer3_out))
+#         output =     torch.sigmoid(self.output_layer(layer4_out))
+#         #output = torch.sigmoid(self.output_layer(layer5_out)) ## For regression, no activation is used in output layer
         return output
     
 def set_seed(seed):
@@ -133,7 +158,7 @@ def f_(m1, m2, L1, L2, I1, I2, F1, F2, q1, q2, q3, q4):
 #              torch.index_select(u, 1, 6), torch.index_select(u, 1, 7),
 #              torch.index_select(x, 1, 0), torch.index_select(x, 1, 1), torch.index_select(x, 1, 2), torch.index_select(x, 1, 3))
 
-def model_loss_(x, u_hat, device):
+def model_loss_(x, u_hat, device, norm):
     #formato de x
     #[[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat]
     
@@ -142,6 +167,7 @@ def model_loss_(x, u_hat, device):
     #u_hat = u_hat.detach().numpy() 
     #u_hat = u_hat.numpy() 
     #x = x.numpy()
+    x, u_hat = norm.unormalize(x, u_hat)
     x = x.cpu()
     u_hat = u_hat.cpu()
 
@@ -186,10 +212,10 @@ def model_loss_(x, u_hat, device):
     #q3 = x[2]
     #q4 = x[3]
     dt = 0.000030517578125
-    Hi_next11, Hi_next12, Hi_next21, Hi_next22 = H_(m1u, m2u, L1u, L2u, I1u, I2u, F1u, F2u, q1, q2, q3, q4)
-    Hi11, Hi12, Hi21, Hi22 = H_(m1x, m2x, L1x, L2x, I1x, I2x, F1x, F2x, q1, q2, q3, q4)#.to(device) #q1, q2, q3, q4
-    fi1, fi2  = f_(m1x, m2x, L1x, L2x, I1x, I2x, F1x, F2x, q1, q2, q3, q4) # formato 
-    fi_next1, fi_next2 = f_(m1u, m2u, L1u, L2u, I1u, I2u, F1u, F2u, q1, q2, q3, q4)#.to(device)
+    Hi_next11, Hi_next12, Hi_next21, Hi_next22 = H_(m1x+m1u, m2x+m2u, L1x+L1u, L2x+L2u, I1x+I1u, I2x+I2u, F1x+F1u, F2x+F2u, q1, q2, q3, q4)
+    #Hi11, Hi12, Hi21, Hi22 = H_(m1x, m2x, L1x, L2x, I1x, I2x, F1x, F2x, q1, q2, q3, q4)#.to(device) #q1, q2, q3, q4
+    #fi1, fi2  = f_(m1x, m2x, L1x, L2x, I1x, I2x, F1x, F2x, q1, q2, q3, q4) # formato 
+    fi_next1, fi_next2 = f_(m1x+m1u, m2x+m2u, L1x+L1u, L2x+L2u, I1x+I1u, I2x+I2u, F1x+F1u, F2x+F2u, q1, q2, q3, q4)#.to(device)
 
     #Hi = Hi.to(device)
     den = 1/(Hi_next11*Hi_next22 - Hi_next12*Hi_next21)
@@ -199,29 +225,29 @@ def model_loss_(x, u_hat, device):
     Hi_next_inv22 = den * Hi_next11
 
     #e = torch.matmul(Hi_next_inv,fi_next - fi) - torch.matmul(torch.matmul(Hi_next_inv, Hi), torch.tensor([[torch.index_select(x, 1, 4)], [torch.index_select(x, 1, 5)]])) 
-    HH11 = Hi_next_inv11*Hi11 + Hi_next_inv12*Hi21
-    HH12 = Hi_next_inv11*Hi12 + Hi_next_inv12*Hi22
-    HH21 = Hi_next_inv21*Hi11 + Hi_next_inv22*Hi21
-    HH22 =  Hi_next_inv21*Hi12 + Hi_next_inv22*Hi22
+    #HH11 = Hi_next_inv11*Hi11 + Hi_next_inv12*Hi21
+    #HH12 = Hi_next_inv11*Hi12 + Hi_next_inv12*Hi22
+    #HH21 = Hi_next_inv21*Hi11 + Hi_next_inv22*Hi21
+    #HH22 =  Hi_next_inv21*Hi12 + Hi_next_inv22*Hi22
 
-    e1 = (Hi_next_inv11*(fi1-fi_next1) + Hi_next_inv12*(fi2-fi_next2) - (HH11*T1 + HH12*T2))*dt
-    e2 = (Hi_next_inv21*(fi1-fi_next1) + Hi_next_inv22*(fi2-fi_next2) - (HH21*T1 + HH22*T2))*dt
-    dv1 = v1 - q3
-    dv2 = v2 - q4
+    e1 = (Hi_next_inv11*(-fi_next1+T1) + Hi_next_inv12*(-fi_next2+T2))*dt #- (HH11*T1 + HH12*T2))*dt
+    e2 = (Hi_next_inv21*(-fi_next1+T1) + Hi_next_inv22*(-fi_next2+T2))*dt #- (HH21*T1 + HH22*T2))*dt
+    dv1 = v1-q3 #- v1  
+    dv2 = v2 - q4    
     #e = dt*e
     #e = torch.transpose(e)
     #dv = torch.tensor([[torch.index_select(x, 1, torch.tensor([6]))-torch.index_select(x, 1, torch.tensor([2])), torch.index_select(x, 1, torch.tensor([7]))-torch.index_select(x, 1, torch.tensor([3]))]])
     #np.matmul()
     return torch.cat((e1, e2), 1), torch.cat((dv1, dv2), 1)
 
-def model_loss(x, net_out, device):
+def model_loss(x, net_out, device, norm):
 
     #i = 0
     #u =net(x)
     
-    return model_loss_(x, net_out, device)
+    return model_loss_(x, net_out, device, norm)
 def main():
-    device = torch_directml.device() #torch.device("cpu")#torch_directml.device()
+    device = torch.device("cpu")#torch_directml.device() #torch_directml.device()
     print('using device ', device)
     #print('device name', torch_directml.device_name(0))
     set_seed(666)
@@ -232,16 +258,27 @@ def main():
     Y = np.empty((0,8))  
     X = np.empty((0,16))
     #load data
-    for i in range (8):
-        x_file_name='x_{0}_big.out.npy'.format(i)
-        y_file_name='y_{0}_big.out.npy'.format(i)
+    # for i in range (8):
+    #     x_file_name='x_{0}_big.out.npy'.format(i)
+    #     y_file_name='y_{0}_big.out.npy'.format(i)
+    #     x_path = (os.path.join(array_folder, x_file_name))
+    #     y_path = (os.path.join(array_folder, y_file_name))
+    #     x = np.load(x_path, 'r')
+    #     X = np.concatenate((X, x))
+    #     y = np.load(y_path, 'r')
+    #     Y = np.concatenate((Y, y))
+    try:
+        x_file_name='x_norm_big.out.npy'
+        y_file_name='y_norm_big.out.npy'
         x_path = (os.path.join(array_folder, x_file_name))
         y_path = (os.path.join(array_folder, y_file_name))
         x = np.load(x_path, 'r')
         X = np.concatenate((X, x))
         y = np.load(y_path, 'r')
         Y = np.concatenate((Y, y))
-        
+    except Exception:
+        print('fail to load model an directory ', array_folder)
+        return -1
 
     #print('X', len(X))
     #print('Y', len(Y))
@@ -264,6 +301,11 @@ def main():
     Y_test = Y[test_indices]
     X_train = X[train_indices]
     Y_train = Y[train_indices]
+    X_train1 = X_train#[len(X_train)//2:]
+    Y_train1 = Y_train#[len(Y_train)//2:]
+    #X_train2 = X_train[:len(X_train)//2]
+    #Y_train2 = Y_train[:len(Y_train)//2]
+    
     #a_train = a[train_indices]
     train_validation = []
     test_validation = []
@@ -290,25 +332,41 @@ def main():
     #optimizer = torch.optim.Adam(net.parameters())
     
     ### (3) Training / Fitting
-    iterations = 1500
-    pt_x_bc = torch.from_numpy(X_train).float().to(device)
-    pt_y_bc = torch.from_numpy(Y_train).float().to(device)
-
+    iterations = 100
+    pt_x_bc1 = torch.from_numpy(X_train1).float().to(device)
+    #pt_x_bc.requires_grad = True
+    pt_y_bc1 = torch.from_numpy(Y_train1).float().to(device)
+    norm = Normalize()
+    #pt_x_bc2 = torch.from_numpy(X_train2).float().to(device)
+    #pt_x_bc.requires_grad = True
+    #pt_y_bc2 = torch.from_numpy(Y_train2).float().to(device)
+    
     #pt_x_validation = Variable(torch.from_numpy(X_test).float(), requires_grad=False).to(device)
     #pt_y_validation = Variable(torch.from_numpy(Y_test).float(), requires_grad=False).to(device)
     #early_stop = EarlyStopper(5, 0.1, 0.00001)
     #previous_validation_loss = 99999999.0
     for epoch in range(iterations):
         optimizer.zero_grad() # to make the gradients zero
-        net_bc_out = net(pt_x_bc)
-        mse_u = mse_cost_function(net_bc_out, pt_y_bc)
-        #loss = mse_cost_function(net_bc_out, pt_y_bc)
-        e, dv = model_loss(pt_x_bc, net_bc_out, device)
+        net_bc_out = net(pt_x_bc1)#torch.utils.checkpoint.checkpoint(net.forward, pt_x_bc, use_reentrant=False)#net(pt_x_bc)
+        mse_u = mse_cost_function(net_bc_out, pt_y_bc1)
+        loss = mse_cost_function(net_bc_out, pt_y_bc1)
+        e, dv = model_loss(pt_x_bc1, net_bc_out, device, norm)
         loss = mse_u + mse_cost_function(e, dv)
         #loss = mse_u + mse_f
 
         loss.backward() # This is for computing gradients using backward propagation
         optimizer.step() # This is equivalent to : theta_new = theta_old - alpha * derivative of J w.r.t theta
+
+        optimizer.zero_grad() # to make the gradients zero
+        #net_bc_out = net(pt_x_bc2)#torch.utils.checkpoint.checkpoint(net.forward, pt_x_bc, use_reentrant=False)#net(pt_x_bc)
+        #mse_u = mse_cost_function(net_bc_out, pt_y_bc2)
+        #loss = mse_cost_function(net_bc_out, pt_y_bc2)
+        #e, dv = model_loss(pt_x_bc2, net_bc_out, device)
+        #loss = mse_u #+ mse_cost_function(e, dv)
+        #loss = mse_u + mse_f
+
+        #loss.backward() # This is for computing gradients using backward propagation
+        #optimizer.step() # This is equivalent to : theta_new = theta_old - alpha * derivative of J w.r.t theta
 
         #@torch.no_grad
         # net_bc_out = net(pt_x_validation)
@@ -326,16 +384,20 @@ def main():
         # if (early_stop.early_stop(valitation_loss.cpu().data.numpy())):
         #     print("training halt")
         #     break
-        if epoch % 100 == 0:
-            print('saving model')
-            loss_saved = loss.cpu
-            net_save = net.cpu()
-            #optimizer_saved = optimizer.cpu()
-            torch.save({
-            'loss' : loss_saved,
-            'model_dict' : net_save.state_dict(),
-            'optimizer_state_dict' : optimizer.state_dict(),
-            }, os.path.join(array_folder, checkpoint_file))
+        # if epoch % 100 == 0:
+        #     print('saving model')
+        #     loss_saved = loss.clone()
+        #     loss_saved = loss_saved.detach().cpu()
+        #     net_save = net.cpu()#.detach()
+        #     #optimizer_saved = optimizer.cpu()
+        #     torch.save({
+        #     'loss' : loss_saved,
+        #     'model_dict' : net_save.state_dict(),
+        #     'optimizer_state_dict' : optimizer.state_dict(),
+        #     }, os.path.join(array_folder, checkpoint_file))
+        #     #loss.to(device)
+        #     net.train()
+        #     net.to(device)
 
         with torch.autograd.no_grad():
     	    print(epoch,"Traning Loss:",loss.data)#,",Validation Loss:", valitation_loss.data)

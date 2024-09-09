@@ -5,10 +5,12 @@ import itertools
 import multiprocessing
 from multiprocessing import Process, freeze_support
 import warnings
-array_folder = os.path.join('.', 'arrays_big')
-logs_folder = os.path.join('.', 'logs_big')
+array_folder = os.path.join('.', 'array_lowestvar')
+logs_folder = os.path.join('.', 'array_lowestvar')
 
 def map_random(min, max, rand):
+    min = min/2
+    max = max/2
     return min + (max-min)*rand
 
 # def input_map(input, rng):
@@ -35,7 +37,7 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
         print()
     
 def process(inputs, i):
-    s = 999 + i
+    s = 123 + i
     rng = np.random.default_rng(seed=s)
     Y = np.empty((0,8))  
     X = np.empty((0,16))
@@ -51,20 +53,32 @@ def process(inputs, i):
     for input in inputs:
         with warnings.catch_warnings():
             warnings.filterwarnings('error')
-            err1 = input[0] + map_random(-0.1, 0.1, rng.random())
-            err2 = input[1] + map_random(-0.1, 0.1, rng.random())
-            sys = Sistema(m1=5 + map_random(-3, 3, rng.random()), m1h=5 + map_random(-3, 3, rng.random()), #m1
-                          m2=3 + map_random(-2, 2, rng.random()), m2h=3 + map_random(-2, 2, rng.random()), #m2
-                            L1=1.5 + map_random(-0.5, 0.5, rng.random()), L1h=1.5 + map_random(-0.5, 0.5, rng.random()), # L1
-                              L2=1 + map_random(-0.5, 0.5, rng.random()), L2h=1 + map_random(-0.5, 0.5, rng.random()),  #L2
-                              I1=0.25 + map_random(-0.15, 0.15, rng.random()), I1h=0.25 + map_random(-0.15, 0.15, rng.random()), # I1
-                              I2=0.125 + map_random(-0.075, 0.075, rng.random()), I2h=0.125 + map_random(-0.075, 0.075, rng.random()), #I2
-                F1=15 + map_random(-5, 5, rng.random()), F1h=15 + map_random(-5, 5, rng.random()), #F1
-                F2=15 + map_random(-5, 5, rng.random()), F2h=15 + map_random(-5, 5, rng.random()), #F2
+            err1 = input[2] #+ map_random(-0.1/2, 0.1/2, rng.random())
+            err2 = input[3] #+ map_random(-0.1/2, 0.1/2, rng.random())
+            # sys = Sistema(m1=5 + map_random(-3, 3, rng.random()), m1h=5 + map_random(-3, 3, rng.random()), #m1
+            #               m2=3 + map_random(-2, 2, rng.random()), m2h=3 + map_random(-2, 2, rng.random()), #m2
+            #                 L1=1.5 + map_random(-0.5, 0.5, rng.random()), L1h=1.5 + map_random(-0.5, 0.5, rng.random()), # L1
+            #                   L2=1 + map_random(-0.5, 0.5, rng.random()), L2h=1 + map_random(-0.5, 0.5, rng.random()),  #L2
+            #                   I1=0.25 + map_random(-0.15, 0.15, rng.random()), I1h=0.25 + map_random(-0.15, 0.15, rng.random()), # I1
+            #                   I2=0.125 + map_random(-0.075, 0.075, rng.random()), I2h=0.125 + map_random(-0.075, 0.075, rng.random()), #I2
+            #     F1=15 + map_random(-5, 5, rng.random()), F1h=15 + map_random(-5, 5, rng.random()), #F1
+            #     F2=15 + map_random(-5, 5, rng.random()), F2h=15 + map_random(-5, 5, rng.random()), #F2
+            #     ref1=err1, ref2=err2, #ref1, ref2
+            #     q10=input[0] + map_random(-0.01, 0.01, rng.random()), q20=input[1] + map_random(-0.01, 0.01, rng.random()), #q10, q20
+            #     K1=74, K2=266, #K1, K2
+            #     q30=map_random(0, err1*10, rng.random()), q40= map_random(0, err2*20, rng.random())) 
+            sys = Sistema(m1=5 + map_random(-3/2, 3/2, rng.random()), m1h=5 + map_random(-3/2, 3/2, rng.random()), #m1
+                          m2=3 + map_random(-2/2, 2/2, rng.random()), m2h=3 + map_random(-2/2, 2/2, rng.random()), #m2
+                            L1=1.5 + map_random(-0.5/4, 0.5/4, rng.random()), L1h=1.5 + map_random(-0.5/8, 0.5/8, rng.random()), # L1
+                              L2=1 + map_random(-0.5/4, 0.5/4, rng.random()), L2h=1 + map_random(-0.5/8, 0.5/8, rng.random()),  #L2
+                              I1=0.25 + map_random(-0.15/4, 0.15/4, rng.random()), I1h=0.25 + map_random(-0.15/8, 0.15/8, rng.random()), # I1
+                              I2=0.125 + map_random(-0.075/4, 0.075/4, rng.random()), I2h=0.125 + map_random(-0.075/8, 0.075/8, rng.random()), #I2
+                F1=15 + map_random(-5/4, 5/4, rng.random()), F1h=15 + map_random(-5/8, 5/8, rng.random()), #F1
+                F2=15 + map_random(-5/4, 5/4, rng.random()), F2h=15 + map_random(-5/8, 5/8, rng.random()), #F2
                 ref1=err1, ref2=err2, #ref1, ref2
-                q10=input[0] + map_random(-0.01, 0.01, rng.random()), q20=input[1] + map_random(-0.01, 0.01, rng.random()), #q10, q20
+                q10=input[0], q20=input[1], #q10, q20
                 K1=74, K2=266, #K1, K2
-                q30=map_random(0, err1*10, rng.random()), q40= map_random(0, err2*20, rng.random())) 
+                q30=map_random(0, err1*3, rng.random()), q40= map_random(0, err2*3, rng.random())) 
             try:
                 sys.run()
                 x, y = sys.getTrainingArray()
@@ -117,10 +131,10 @@ def main():
     #F1h = np.linspace(15, 15, param_len)
     #F2 = np.linspace(15, 15, param_len) #14 5
     #F2h = np.linspace(15, 15, param_len)
-    q10 = np.linspace(0, np.pi/6, 96)
-    q20 = np.linspace(0, np.pi/6, 96)
-    q1jump = np.linspace(-np.pi/3, np.pi/3, 16)
-    q2jump = np.linspace(-np.pi/2, np.pi/2, 16)
+    q10 = np.linspace(0, np.pi/24, 48)
+    q20 = np.linspace(0, np.pi/24, 48)
+    q1jump = np.linspace(-np.pi/48, np.pi/48, 16)
+    q2jump = np.linspace(-np.pi/48, np.pi/48, 16)
     #K1 = np.linspace(74.00, 74.00, 1)
     #K2 = (266.00, 266.00, 1)
     # m1, m1h, m2, m2h, L1, L1h, L2, L2h, I1, I1h, I2, I2h, F1, F1h, F2, F2h, ref1, ref2, q10, q20, K1, K2):
