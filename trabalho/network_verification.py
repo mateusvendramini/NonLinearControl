@@ -136,6 +136,7 @@ class Sistema:
         dI2 = 0.15*m_new[0][5] #((m_new[0][5])*0.125+0.05 - self.I2h)
         dF1 = 10*m_new[0][6]  #((m_new[0][6])*10+10 - self.F1h)
         dF2 = 10*m_new[0][7]  #((m_new[0][7])*10+10 - self.F2h)
+        self.i+=1
         # if (self.i < 10):
         #     self.dm1 += dm1/10
         #     self.dm2 += dm2/10
@@ -186,9 +187,9 @@ class Sistema:
                               (((self.I1h-self.I1)/0.3))**2 + ((self.I2h-self.I2)/0.15)**2 + 
                               (((self.F1h-self.F1)/10))**2 + ((self.F2h-self.F2)/10)**2)
         var = np.sqrt((dm1/6)**2 + (dm2/4)**2 + dL1**2 + dL2**2 + (dI1/0.3)**2 + (dI2/0.15)**2 + (dF1/10)**2 + (dF2/10)**2)
-        if var < 0.001:
-            self.learning_parameters = 0
-            print('finished learning parameters')
+        if var < 0.00001:
+            self.learning_parameters = False
+            print('finished learning parameters', var, 'in ', self.i, 'iterations')
         return
 
 
@@ -312,8 +313,8 @@ def main():
     #               L2=1, L2h=1, I1=0.25, I1h=0.25, I2=0.125, I2h=0.125, F1=15, F1h=15, F2=15 , F2h=15, ref1=np.pi/2, ref2=-np.pi/2,
     #                 q10=np.pi/2, q20=np.pi/2, K1=62, K2=254)
     sis = Sistema(m1=5.5, m1h=5.0, m2=3.5, m2h=3.0, L1=1.6, L1h=1.5, L2=1.2, L2h=1, 
-                  I1=0.30, I1h=0.25, I2=0.150, I2h=0.125, F1=16, F1h=15, 
-                  F2=16, F2h=15, ref1=np.pi/24, ref2=np.pi/24, q10=0, q20=-0, K1=74, K2=266,q30=0, q40=0, model_path=os.path.join(array_folder, 'net_adam_mseonly.pt'))
+                  I1=0.30, I1h=0.25, I2=0.150, I2h=0.125, F1=12.5, F1h=15, 
+                  F2=12.5, F2h=15, ref1=np.pi/24, ref2=np.pi/24, q10=0, q20=-0, K1=74, K2=266,q30=0, q40=0, model_path=os.path.join(array_folder, 'net_adam_mseonly.pt'))
     sis.run()
     #out, y = sis.getTrainingArray()
     xsis = []

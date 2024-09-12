@@ -5,8 +5,8 @@ import itertools
 import multiprocessing
 from multiprocessing import Process, freeze_support
 import warnings
-array_folder = os.path.join('.', 'array_lowestvar')
-logs_folder = os.path.join('.', 'array_lowestvar')
+array_folder = os.path.join('.', 'array_captureloss')
+logs_folder = os.path.join('.', 'array_captureloss')
 
 def map_random(min, max, rand):
     min = min/2

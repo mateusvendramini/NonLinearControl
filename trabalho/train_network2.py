@@ -13,8 +13,8 @@ y_offset_tensor = None
 x_mod_tensor = None
 y_mod_tensor = None
 
-network_file = 'net_adam_mseonly.pt'
-checkpoint_file = 'checkpoint_adammseonly.pt'
+network_file = 'net_adam.pt'
+checkpoint_file = 'checkpoint.pt'
 def map_m1 (num):
     return map_var(num, 2, 8 )
 def map_m2(num):
@@ -63,11 +63,11 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(16, 256),
+            nn.Linear(16, 64),
             nn.ReLU(),
-            nn.Linear(256, 128),
+            nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(128, 32),
+            nn.Linear(32, 32),
             nn.ReLU(),
             nn.Linear(32, 8),
             nn.Sigmoid()
@@ -118,10 +118,10 @@ def H_(m1, m2, L1, L2, I1, I2, F1, F2, q1, q2, q3, q4):
     #a1 = I1 +(m1*L1*L1)/4 + m2*(L1*L1 + (L2*L2)/4)
     a2 = I2 +torch.mul(torch.mul(m2, L2_qr) , 0.25)
     a3 = m2*L1L2/2
-    
+    cosq2 = torch.cos(q2)
     #H = np.array([[a1+2*a3*np.cos(q2), a2+a3*np.cos(q2)],
     #                [a2+a3*np.cos(q2), a2]])
-    H = a1+2*a3*torch.cos(q2), a2+a3*torch.cos(q2), a2+a3*torch.cos(q2), a2 #return H11, H12, H21, H22
+    H = a1+2*torch.mul(a3, cosq2), a2+a3*torch.cos(q2), a2+a3*torch.cos(q2), a2 #return H11, H12, H21, H22
     return H
 
 # def H(u, x):
@@ -159,6 +159,7 @@ def f_(m1, m2, L1, L2, I1, I2, F1, F2, q1, q2, q3, q4):
 #              torch.index_select(x, 1, 0), torch.index_select(x, 1, 1), torch.index_select(x, 1, 2), torch.index_select(x, 1, 3))
 
 def model_loss_(x, u_hat, device, norm):
+    #formatoloss_(x, u_hat, device, norm):
     #formato de x
     #[[q1, q2, q3, q4, T1, T2, q3_nex, q4_next, parametros hat]
     
@@ -247,7 +248,7 @@ def model_loss(x, net_out, device, norm):
     
     return model_loss_(x, net_out, device, norm)
 def main():
-    device = torch.device("cpu")#torch_directml.device() #torch_directml.device()
+    device = torch.device("cpu") #torch_directml.device()#torch.device("cpu")#torch_directml.device() #torch_directml.device()
     print('using device ', device)
     #print('device name', torch_directml.device_name(0))
     set_seed(666)
@@ -301,8 +302,8 @@ def main():
     Y_test = Y[test_indices]
     X_train = X[train_indices]
     Y_train = Y[train_indices]
-    X_train1 = X_train#[len(X_train)//2:]
-    Y_train1 = Y_train#[len(Y_train)//2:]
+    X_train1 = X_train[len(X_train)//4:] #X_train#[len(X_train)//2:]
+    Y_train1 = Y_train[len(Y_train)//4:]#Y_train#[len(Y_train)//2:]
     #X_train2 = X_train[:len(X_train)//2]
     #Y_train2 = Y_train[:len(Y_train)//2]
     
@@ -322,8 +323,9 @@ def main():
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         loss = checkpoint['loss']
         net.train()
-    except Exception:
-        print('Erro ao carregar ', Exception,Exception.args)
+    except Exception as e:
+        print('Erro ao carregar ', e,e.args)
+        print(str(e))
         net = net.to(device)
         optimizer = torch.optim.Adam(params=net.parameters(), foreach=True)
 
@@ -333,10 +335,11 @@ def main():
     
     ### (3) Training / Fitting
     iterations = 100
+    loss_output = []
     pt_x_bc1 = torch.from_numpy(X_train1).float().to(device)
     #pt_x_bc.requires_grad = True
     pt_y_bc1 = torch.from_numpy(Y_train1).float().to(device)
-    norm = Normalize()
+    norm = Normalize(device)
     #pt_x_bc2 = torch.from_numpy(X_train2).float().to(device)
     #pt_x_bc.requires_grad = True
     #pt_y_bc2 = torch.from_numpy(Y_train2).float().to(device)
@@ -398,10 +401,11 @@ def main():
         #     #loss.to(device)
         #     net.train()
         #     net.to(device)
-
+        saved_loss = torch.clone(loss).cpu()
+        loss_output.append(saved_loss.data.numpy())  
         with torch.autograd.no_grad():
     	    print(epoch,"Traning Loss:",loss.data)#,",Validation Loss:", valitation_loss.data)
-            
+          
 
     #np.save(os.path.join(array_folder, 'train_deep.loss'), np.array(train_validation))
     #np.save(os.path.join(array_folder,'test_deep.loss'), np.array(test_validation))
@@ -417,6 +421,7 @@ def main():
         'model_dict' : net.state_dict(),
         'optimizer_state_dict' : optimizer.state_dict(),
     }, os.path.join(array_folder, checkpoint_file))
+    np.save(os.path.join(array_folder, 'loss_output_2'), np.array(loss_output))
 
     pt_x_validation = Variable(torch.from_numpy(X_test[0:10]).float(), requires_grad=False).to(device)
     pt_y_validation = Variable(torch.from_numpy(Y_test[0:10]).float(), requires_grad=False).to(device)
